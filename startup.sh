@@ -1,43 +1,36 @@
 #!/bin/bash
 
-# Script de démarrage pour l'API d'inférence multi-session
-# Utilise les variables d'environnement ou les valeurs par défaut
+# Charger les variables d'environnement depuis le fichier .env
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
 
-# Définir les valeurs par défaut
-DEFAULT_HOST="0.0.0.0"
-DEFAULT_PORT="8000"
-DEFAULT_WORKERS="1"
-DEFAULT_LOG_LEVEL="info"
-DEFAULT_MODEL="huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2"
-DEFAULT_USE_GPU="false"
-DEFAULT_MAX_MODEL_LEN="24272"
+# Définition des valeurs par défaut
+HOST=${HOST:-"0.0.0.0"}
+PORT=${PORT:-8000}
+WORKERS=${WORKERS:-1}
+LOG_LEVEL=${LOG_LEVEL:-"info"}
+MODEL_NAME=${MODEL_NAME:-"huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2"}
+USE_GPU=${USE_GPU:-"true"}
+MAX_MODEL_LEN=${MAX_MODEL_LEN:-8000}
+PRELOAD_MODELS=${PRELOAD_MODELS:-"true"}
+INIT_DB=${INIT_DB:-"false"}
 
 # Valeurs par défaut pour JSONSimplifier
-DEFAULT_JSON_SIMPLIFIER_ENABLED="false"
-DEFAULT_JSON_SIMPLIFIER_MODEL="huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2"
-DEFAULT_JSON_SIMPLIFIER_SYSTEM_PROMPT="Translate this json {text} in plain english"
-DEFAULT_JSON_SIMPLIFIER_APPLY_TO="inference,video,transcription"
+JSON_SIMPLIFIER_ENABLED=${JSON_SIMPLIFIER_ENABLED:-"false"}
+JSON_SIMPLIFIER_MODEL=${JSON_SIMPLIFIER_MODEL:-"huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2"}
+JSON_SIMPLIFIER_SYSTEM_PROMPT=${JSON_SIMPLIFIER_SYSTEM_PROMPT:-"Translate this JSON {text} into simple English"}
+JSON_SIMPLIFIER_APPLY_TO=${JSON_SIMPLIFIER_APPLY_TO:-"inference,video,transcription"}
 
-# Récupérer les valeurs des variables d'environnement ou utiliser les valeurs par défaut
-HOST=${API_HOST:-$DEFAULT_HOST}
-PORT=${API_PORT:-$DEFAULT_PORT}
-WORKERS=${API_WORKERS:-$DEFAULT_WORKERS}
-LOG_LEVEL=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
-MODEL_NAME=${MODEL_NAME:-$DEFAULT_MODEL}
-USE_GPU=${USE_GPU:-$DEFAULT_USE_GPU}
-MAX_MODEL_LEN=${MAX_MODEL_LEN:-$DEFAULT_MAX_MODEL_LEN}
+# Fonction de gestion des erreurs
+handle_error() {
+  echo "ERREUR: $1"
+  exit 1
+}
 
-# Récupérer les valeurs pour JSONSimplifier
-JSON_SIMPLIFIER_ENABLED=${JSON_SIMPLIFIER_ENABLED:-$DEFAULT_JSON_SIMPLIFIER_ENABLED}
-JSON_SIMPLIFIER_MODEL=${JSON_SIMPLIFIER_MODEL:-$DEFAULT_JSON_SIMPLIFIER_MODEL}
-JSON_SIMPLIFIER_SYSTEM_PROMPT=${JSON_SIMPLIFIER_SYSTEM_PROMPT:-$DEFAULT_JSON_SIMPLIFIER_SYSTEM_PROMPT}
-JSON_SIMPLIFIER_APPLY_TO=${JSON_SIMPLIFIER_APPLY_TO:-$DEFAULT_JSON_SIMPLIFIER_APPLY_TO}
-
-# Exporter les variables d'environnement pour qu'elles soient disponibles pour l'application
-export JSON_SIMPLIFIER_ENABLED
-export JSON_SIMPLIFIER_MODEL
-export JSON_SIMPLIFIER_SYSTEM_PROMPT
-export JSON_SIMPLIFIER_APPLY_TO
+# Vérifier les dépendances critiques
+command -v python3 >/dev/null 2>&1 || handle_error "Python3 n'est pas installé"
+command -v uvicorn >/dev/null 2>&1 || handle_error "Uvicorn n'est pas installé"
 
 # Créer les répertoires nécessaires
 mkdir -p inference_results
@@ -45,6 +38,19 @@ mkdir -p logs
 mkdir -p uploads/video uploads/audio uploads/text
 mkdir -p results/transcriptions
 mkdir -p results/video_analysis
+mkdir -p postprocessors
+
+# Vérifier si la base de données doit être initialisée
+if [ "$INIT_DB" = "true" ]; then
+  echo "Initialisation de la base de données..."
+  python -m db.init_db || handle_error "Échec de l'initialisation de la base de données"
+fi
+
+# Précharger les modèles si nécessaire
+if [ "$PRELOAD_MODELS" = "true" ]; then
+  echo "Préchargement des modèles..."
+  python -c "from model_manager import ModelManager; ModelManager.preload_models()" || echo "Avertissement: Échec du préchargement des modèles"
+fi
 
 echo "Démarrage de l'API d'inférence multi-session..."
 echo "Hôte: $HOST"
