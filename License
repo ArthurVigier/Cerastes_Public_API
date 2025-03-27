@@ -1,0 +1,12 @@
+Main License (GPL v2) The majority of source code and system prompts are distributed under the GNU General Public License version 2 (GPL v2). This license allows use, modification, and distribution of the source code, provided that all modifications and derivative code are also distributed under GPL v2. Video Manipulation Analysis Component (AGPL v3) The videomanipulation_analyzer module is distributed under the GNU Affero General Public License version 3 (AGPL v3). In addition to GPL requirements, AGPL requires that the complete source code be made available to users who interact with the software via a network. Commercial Licenses Commercial licenses are available for organizations that wish to use Cerastes API without the restrictions of GPL/AGPL licenses:
+
+Standard Commercial License: Allows use of the software without the obligation to share the source code of modifications. Extended Commercial License: Includes commercial usage rights for the video manipulation analysis module and dedicated technical support.
+
+Note: 
+The Commercial License is : 
+- **Manually granted**, upon explicit request only.
+- **Revocable** in case of abuse or license violation.
+
+To request such a license (e.g. for legal clearance in enterprise deployments), contact: arvi
+
+Note on AI Models Usage Third-party AI models integrated into this platform (such as Whisper, InternVideo, etc.) are subject to their own licenses. Please consult the respective licenses before any commercial use.
