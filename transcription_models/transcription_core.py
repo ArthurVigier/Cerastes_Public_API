@@ -1,8 +1,8 @@
 """
-Module principal pour la transcription de fichiers vidéo et audio
+Main module for video and audio transcription
 ----------------------------------------------------------------
-Ce module intègre les fonctionnalités des autres modules de transcription
-pour fournir une API unifiée pour la transcription de contenu multimédia.
+This module integrates the functionalities of other transcription modules
+to provide a unified API for transcribing multimedia content.
 """
 
 import os
@@ -14,15 +14,15 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Callable, Tuple, Union
 from tempfile import NamedTemporaryFile
 
-# Import des modules spécialisés
+# Import specialized modules
 from .audio_extraction import extract_audio, cleanup_audio_file
 from .whisper_utils import transcribe_audio, format_whisper_result, cleanup_whisper_model
 from .diarization import diarize_audio, assign_speakers, format_diarized_transcription
 
-# Configuration du logging
+# Logging configuration
 logger = logging.getLogger("transcription.core")
 
-# Répertoire temporaire pour les fichiers de sortie
+# Temporary directory for output files
 RESULTS_DIR = Path("results/transcriptions")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -33,51 +33,51 @@ def process_monologue(
     progress: Optional[Callable] = None
 ) -> Dict[str, Any]:
     """
-    Transcrit une vidéo en mode monologue (sans identification des locuteurs)
+    Transcribes a video in monologue mode (without speaker identification)
     
     Args:
-        video_path: Chemin vers le fichier vidéo
-        output_txt: Chemin de sortie pour le fichier texte (facultatif)
-        model_size: Taille du modèle Whisper à utiliser
-        progress: Fonction de suivi de progression (facultatif)
+        video_path: Path to the video file
+        output_txt: Output path for the text file (optional)
+        model_size: Size of the Whisper model to use
+        progress: Progress tracking function (optional)
         
     Returns:
-        Dictionnaire contenant la transcription complète et les segments
+        Dictionary containing the complete transcription and segments
         
     Raises:
-        Exception: Si une erreur survient pendant le traitement
+        Exception: If an error occurs during processing
     """
     try:
-        # Extraire l'audio
+        # Extract audio
         if progress:
-            progress(0.1, desc="Extraction de l'audio...")
+            progress(0.1, desc="Extracting audio...")
         
         audio_path = extract_audio(video_path, progress=progress)
         audio_extracted = True
         
-        # Transcrire l'audio
+        # Transcribe audio
         if progress:
-            progress(0.3, desc="Transcription en cours...")
+            progress(0.3, desc="Transcription in progress...")
         
         result = transcribe_audio(audio_path, model_size, progress=progress)
         
-        # Sauvegarder la transcription si demandé
+        # Save transcription if requested
         if output_txt:
             with open(output_txt, "w", encoding="utf-8") as f:
                 formatted_text = format_whisper_result(result)
                 f.write(formatted_text)
             
             if progress:
-                progress(0.95, desc=f"Transcription enregistrée dans {output_txt}")
+                progress(0.95, desc=f"Transcription saved to {output_txt}")
         
-        # Nettoyage
+        # Cleanup
         if progress:
-            progress(1.0, desc="Transcription terminée")
+            progress(1.0, desc="Transcription completed")
         
         if audio_extracted:
             cleanup_audio_file(audio_path)
         
-        # Format de sortie unifié
+        # Unified output format
         return {
             "transcription": result["text"],
             "segments": result["segments"],
@@ -86,11 +86,11 @@ def process_monologue(
         }
         
     except Exception as e:
-        error_msg = f"Erreur lors de la transcription: {str(e)}"
+        error_msg = f"Error during transcription: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         
-        # Nettoyage en cas d'erreur
+        # Cleanup in case of error
         if 'audio_path' in locals() and 'audio_extracted' in locals() and audio_extracted:
             cleanup_audio_file(audio_path)
         
@@ -104,61 +104,61 @@ def process_multiple_speakers(
     progress: Optional[Callable] = None
 ) -> Dict[str, Any]:
     """
-    Transcrit une vidéo avec identification des locuteurs
+    Transcribes a video with speaker identification
     
     Args:
-        video_path: Chemin vers le fichier vidéo
-        output_txt: Chemin de sortie pour le fichier texte (facultatif)
-        model_size: Taille du modèle Whisper à utiliser
-        huggingface_token: Token Hugging Face pour l'accès au modèle de diarisation
-        progress: Fonction de suivi de progression (facultatif)
+        video_path: Path to the video file
+        output_txt: Output path for the text file (optional)
+        model_size: Size of the Whisper model to use
+        huggingface_token: Hugging Face token for access to the diarization model
+        progress: Progress tracking function (optional)
         
     Returns:
-        Dictionnaire contenant la transcription avec identification des locuteurs
+        Dictionary containing the transcription with speaker identification
         
     Raises:
-        Exception: Si une erreur survient pendant le traitement
+        Exception: If an error occurs during processing
     """
     try:
-        # Extraire l'audio
+        # Extract audio
         if progress:
-            progress(0.1, desc="Extraction de l'audio...")
+            progress(0.1, desc="Extracting audio...")
         
         audio_path = extract_audio(video_path, progress=progress)
         audio_extracted = True
         
-        # Transcrire l'audio
+        # Transcribe audio
         if progress:
-            progress(0.3, desc="Transcription en cours...")
+            progress(0.3, desc="Transcription in progress...")
         
         result = transcribe_audio(audio_path, model_size, progress=progress)
         
-        # Identifier les locuteurs
+        # Identify speakers
         if progress:
-            progress(0.5, desc="Identification des locuteurs en cours...")
+            progress(0.5, desc="Speaker identification in progress...")
         
         diarization = diarize_audio(audio_path, huggingface_token, progress=progress)
         
-        # Associer les locuteurs à la transcription
+        # Associate speakers with the transcription
         final_transcription = assign_speakers(result, diarization)
         
-        # Sauvegarder le résultat si demandé
+        # Save the result if requested
         if output_txt:
             with open(output_txt, "w", encoding="utf-8") as f:
                 formatted_text = format_diarized_transcription(final_transcription)
                 f.write(formatted_text)
             
             if progress:
-                progress(0.95, desc=f"Transcription enregistrée dans {output_txt}")
+                progress(0.95, desc=f"Transcription saved to {output_txt}")
         
-        # Nettoyage
+        # Cleanup
         if progress:
-            progress(1.0, desc="Transcription terminée")
+            progress(1.0, desc="Transcription completed")
         
         if audio_extracted:
             cleanup_audio_file(audio_path)
         
-        # Format de sortie unifié
+        # Unified output format
         return {
             "transcription": format_diarized_transcription(final_transcription, include_timestamps=False),
             "segments": final_transcription,
@@ -168,15 +168,15 @@ def process_multiple_speakers(
         }
         
     except Exception as e:
-        error_msg = f"Erreur lors de la transcription avec identification des locuteurs: {str(e)}"
+        error_msg = f"Error during transcription with speaker identification: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         
-        # Nettoyage en cas d'erreur
+        # Cleanup in case of error
         if 'audio_path' in locals() and 'audio_extracted' in locals() and audio_extracted:
             cleanup_audio_file(audio_path)
         
-        # Libérer la mémoire des modèles
+        # Free model memory
         cleanup_whisper_model()
         
         raise Exception(error_msg)
@@ -188,40 +188,40 @@ def transcribe_external_audio(
     progress: Optional[Callable] = None
 ) -> Dict[str, Any]:
     """
-    Transcrit un fichier audio existant sans extraction
+    Transcribes an existing audio file without extraction
     
     Args:
-        audio_path: Chemin vers le fichier audio
-        model_size: Taille du modèle Whisper à utiliser
-        output_txt: Chemin de sortie pour le fichier texte (facultatif)
-        progress: Fonction de suivi de progression (facultatif)
+        audio_path: Path to the audio file
+        model_size: Size of the Whisper model to use
+        output_txt: Output path for the text file (optional)
+        progress: Progress tracking function (optional)
         
     Returns:
-        Dictionnaire contenant la transcription complète et les segments
+        Dictionary containing the complete transcription and segments
         
     Raises:
-        Exception: Si une erreur survient pendant le traitement
+        Exception: If an error occurs during processing
     """
     try:
-        # Transcrire l'audio
+        # Transcribe audio
         if progress:
-            progress(0.2, desc="Transcription audio en cours...")
+            progress(0.2, desc="Audio transcription in progress...")
         
         result = transcribe_audio(audio_path, model_size, progress=progress)
         
-        # Sauvegarder la transcription si demandé
+        # Save transcription if requested
         if output_txt:
             with open(output_txt, "w", encoding="utf-8") as f:
                 formatted_text = format_whisper_result(result)
                 f.write(formatted_text)
             
             if progress:
-                progress(0.9, desc=f"Transcription enregistrée dans {output_txt}")
+                progress(0.9, desc=f"Transcription saved to {output_txt}")
         
         if progress:
-            progress(1.0, desc="Transcription terminée")
+            progress(1.0, desc="Transcription completed")
         
-        # Format de sortie unifié
+        # Unified output format
         return {
             "transcription": result["text"],
             "segments": result["segments"],
@@ -230,17 +230,17 @@ def transcribe_external_audio(
         }
         
     except Exception as e:
-        error_msg = f"Erreur lors de la transcription audio: {str(e)}"
+        error_msg = f"Error during audio transcription: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         raise Exception(error_msg)
 
 def get_available_models() -> Dict[str, Dict[str, Any]]:
     """
-    Retourne les informations sur les modèles de transcription disponibles
+    Returns information about available transcription models
     
     Returns:
-        Dictionnaire avec les informations sur les modèles
+        Dictionary with information about the models
     """
     from .whisper_utils import get_available_whisper_models
     
@@ -248,7 +248,7 @@ def get_available_models() -> Dict[str, Dict[str, Any]]:
         "whisper": get_available_whisper_models(),
         "diarization": {
             "pyannote": {
-                "description": "Modèle de diarisation pour l'identification des locuteurs",
+                "description": "Diarization model for speaker identification",
                 "requires_token": True,
                 "source": "https://huggingface.co/pyannote/speaker-diarization-3.1"
             }

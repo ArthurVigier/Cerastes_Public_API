@@ -1,0 +1,397 @@
+import pytest
+import stripe
+import json
+import base64
+import hmac
+import hashlib
+import time
+import os
+from unittest.mock import patch, MagicMock
+from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
+
+# Importer l'application principale
+from main import app
+from subscription_routes import webhook_secret, router as subscription_router
+from auth_models import User, ApiKeyLevel
+from database import update_user
+
+# Informations de test
+TEST_STRIPE_SECRET = 'sk_test_51XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+TEST_WEBHOOK_SECRET = 'whsec_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+TEST_CUSTOMER_ID = 'cus_XXXXXXXXXXXX'
+TEST_SUBSCRIPTION_ID = 'sub_XXXXXXXXXXXX'
+TEST_PAYMENT_METHOD_ID = 'pm_XXXXXXXXXXXX'
+TEST_PRICE_ID = 'price_1XXXXXXXXXXXXXXXXXXXbasic'
+TEST_INVOICE_ID = 'in_XXXXXXXXXXXX'
+
+# Client de test
+client = TestClient(app)
+
+# Initialisation d'un utilisateur de test
+@pytest.fixture
+def test_user():
+    """Crée un utilisateur de test avec un token JWT valide."""
+    user = User(
+        id="test123",
+        username="testuser",
+        email="test@example.com",
+        hashed_password="hashed_password123",
+        full_name="Test User",
+        roles=["user"],
+        subscription=ApiKeyLevel.FREE,
+        stripe_customer_id=TEST_CUSTOMER_ID,
+        created_at=datetime.utcnow()
+    )
+    
+    # Sauvegarder l'utilisateur dans la base de données simulée
+    from database import users_db
+    users_db[user.id] = user
+    
+    # Créer un token valide pour l'utilisateur
+    from auth import create_access_token
+    access_token = create_access_token(
+        data={"sub": user.id, "name": user.full_name, "email": user.email, 
+              "roles": user.roles, "api_level": user.subscription},
+        expires_delta=timedelta(minutes=30)
+    )
+    
+    return {"user": user, "token": access_token}
+
+@pytest.fixture
+def test_headers(test_user):
+    """Crée les headers d'authentification pour les tests."""
+    return {
+        "Authorization": f"Bearer {test_user['token']}"
+    }
+
+# Mock pour Stripe
+@pytest.fixture
+def mock_stripe():
+    """Mock les fonctions Stripe pour les tests."""
+    # Mock Customer
+    customer_mock = MagicMock()
+    customer_mock.id = TEST_CUSTOMER_ID
+    customer_mock.email = "test@example.com"
+    customer_mock.invoice_settings = MagicMock()
+    customer_mock.invoice_settings.default_payment_method = TEST_PAYMENT_METHOD_ID
+    
+    # Mock PaymentMethod
+    payment_method_mock = MagicMock()
+    payment_method_mock.id = TEST_PAYMENT_METHOD_ID
+    payment_method_mock.type = "card"
+    payment_method_mock.card = MagicMock()
+    payment_method_mock.card.last4 = "4242"
+    payment_method_mock.card.brand = "visa"
+    payment_method_mock.card.exp_month = 12
+    payment_method_mock.card.exp_year = 2025
+    
+    payment_methods_mock = MagicMock()
+    payment_methods_mock.data = [payment_method_mock]
+    
+    # Mock Price
+    price_mock = MagicMock()
+    price_mock.id = TEST_PRICE_ID
+    price_mock.unit_amount = 1900
+    price_mock.currency = "usd"
+    price_mock.recurring = MagicMock()
+    price_mock.recurring.interval = "month"
+    price_mock.product = MagicMock()
+    price_mock.product.description = "Basic Plan for API access"
+    price_mock.product.metadata = {"features": "Feature 1,Feature 2,Feature 3"}
+    
+    # Mock Subscription
+    subscription_mock = MagicMock()
+    subscription_mock.id = TEST_SUBSCRIPTION_ID
+    subscription_mock.status = "active"
+    subscription_mock.current_period_end = int(time.time()) + 30 * 24 * 60 * 60  # 30 jours
+    subscription_mock.cancel_at_period_end = False
+    subscription_mock.customer = TEST_CUSTOMER_ID
+    subscription_mock.items = MagicMock()
+    subscription_mock.items.data = [MagicMock()]
+    subscription_mock.items.data[0].price = price_mock
+    subscription_mock.latest_invoice = MagicMock()
+    subscription_mock.latest_invoice.payment_intent = MagicMock()
+    subscription_mock.latest_invoice.payment_intent.client_secret = "pi_secret_XXXXXX"
+    
+    subscriptions_mock = MagicMock()
+    subscriptions_mock.data = [subscription_mock]
+    
+    # Mock Invoice
+    invoice_mock = MagicMock()
+    invoice_mock.id = TEST_INVOICE_ID
+    invoice_mock.number = "INV-001"
+    invoice_mock.total = 1900
+    invoice_mock.currency = "usd"
+    invoice_mock.status = "paid"
+    invoice_mock.created = int(time.time()) - 7 * 24 * 60 * 60  # 7 jours
+    invoice_mock.due_date = int(time.time()) - 7 * 24 * 60 * 60  # 7 jours
+    invoice_mock.invoice_pdf = "https://example.com/invoice.pdf"
+    
+    invoices_mock = MagicMock()
+    invoices_mock.data = [invoice_mock]
+    
+    # Patch les méthodes Stripe
+    with patch('stripe.Customer.create', return_value=customer_mock) as create_customer_mock, \
+         patch('stripe.Customer.retrieve', return_value=customer_mock) as retrieve_customer_mock, \
+         patch('stripe.Customer.modify', return_value=customer_mock) as modify_customer_mock, \
+         patch('stripe.PaymentMethod.attach', return_value=payment_method_mock) as attach_payment_method_mock, \
+         patch('stripe.PaymentMethod.detach', return_value=payment_method_mock) as detach_payment_method_mock, \
+         patch('stripe.PaymentMethod.list', return_value=payment_methods_mock) as list_payment_methods_mock, \
+         patch('stripe.Price.retrieve', return_value=price_mock) as retrieve_price_mock, \
+         patch('stripe.Subscription.create', return_value=subscription_mock) as create_subscription_mock, \
+         patch('stripe.Subscription.retrieve', return_value=subscription_mock) as retrieve_subscription_mock, \
+         patch('stripe.Subscription.modify', return_value=subscription_mock) as modify_subscription_mock, \
+         patch('stripe.Subscription.list', return_value=subscriptions_mock) as list_subscriptions_mock, \
+         patch('stripe.Invoice.list', return_value=invoices_mock) as list_invoices_mock, \
+         patch('stripe.Webhook.construct_event') as webhook_construct_mock:
+        
+        yield {
+            "customer": customer_mock,
+            "payment_method": payment_method_mock,
+            "price": price_mock,
+            "subscription": subscription_mock,
+            "invoice": invoice_mock,
+            "create_customer": create_customer_mock,
+            "retrieve_customer": retrieve_customer_mock,
+            "modify_customer": modify_customer_mock,
+            "attach_payment_method": attach_payment_method_mock,
+            "detach_payment_method": detach_payment_method_mock,
+            "list_payment_methods": list_payment_methods_mock,
+            "retrieve_price": retrieve_price_mock,
+            "create_subscription": create_subscription_mock,
+            "retrieve_subscription": retrieve_subscription_mock,
+            "modify_subscription": modify_subscription_mock,
+            "list_subscriptions": list_subscriptions_mock,
+            "list_invoices": list_invoices_mock,
+            "webhook_construct": webhook_construct_mock
+        }
+
+# Tests des routes d'abonnement
+def test_get_current_subscription(test_headers, mock_stripe):
+    """Teste la récupération de l'abonnement actuel."""
+    response = client.get("/api/subscriptions/current", headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "subscription" in data
+    assert data["subscription"]["id"] == TEST_SUBSCRIPTION_ID
+    assert data["subscription"]["status"] == "active"
+    assert not data["subscription"]["cancel_at_period_end"]
+
+def test_get_plans(test_headers, mock_stripe):
+    """Teste la récupération des plans disponibles."""
+    response = client.get("/api/subscriptions/plans", headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "plans" in data
+    assert len(data["plans"]) > 0
+    assert "price" in data["plans"][0]
+    assert "features" in data["plans"][0]
+
+def test_get_invoices(test_headers, mock_stripe):
+    """Teste la récupération des factures."""
+    response = client.get("/api/subscriptions/invoices", headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "invoices" in data
+    assert len(data["invoices"]) > 0
+    assert data["invoices"][0]["id"] == TEST_INVOICE_ID
+    assert data["invoices"][0]["status"] == "paid"
+
+def test_get_payment_methods(test_headers, mock_stripe):
+    """Teste la récupération des méthodes de paiement."""
+    response = client.get("/api/subscriptions/payment-methods", headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "payment_methods" in data
+    assert len(data["payment_methods"]) > 0
+    assert data["payment_methods"][0]["id"] == TEST_PAYMENT_METHOD_ID
+    assert data["payment_methods"][0]["last4"] == "4242"
+
+def test_create_subscription(test_headers, mock_stripe):
+    """Teste la création d'un abonnement."""
+    payload = {
+        "priceId": TEST_PRICE_ID
+    }
+    response = client.post("/api/subscriptions/create-subscription", json=payload, headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "clientSecret" in data
+    assert "subscription" in data
+    assert data["subscription"]["id"] == TEST_SUBSCRIPTION_ID
+    assert data["subscription"]["status"] == "active"
+    
+    # Vérifier que la méthode Stripe a été appelée avec les bons paramètres
+    mock_stripe["create_subscription"].assert_called_once()
+    call_args = mock_stripe["create_subscription"].call_args[1]
+    assert call_args["customer"] == TEST_CUSTOMER_ID
+    assert call_args["items"][0]["price"] == TEST_PRICE_ID
+
+def test_cancel_subscription(test_headers, mock_stripe):
+    """Teste l'annulation d'un abonnement."""
+    # Configurer le mock pour l'annulation
+    mock_stripe["modify_subscription"].return_value.cancel_at_period_end = True
+    
+    payload = {
+        "subscriptionId": TEST_SUBSCRIPTION_ID
+    }
+    response = client.post("/api/subscriptions/cancel", json=payload, headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "subscription" in data
+    assert data["subscription"]["id"] == TEST_SUBSCRIPTION_ID
+    assert data["subscription"]["cancel_at_period_end"] == True
+    
+    # Vérifier que la méthode Stripe a été appelée avec les bons paramètres
+    mock_stripe["modify_subscription"].assert_called_once_with(
+        TEST_SUBSCRIPTION_ID,
+        cancel_at_period_end=True
+    )
+
+def test_reactivate_subscription(test_headers, mock_stripe):
+    """Teste la réactivation d'un abonnement."""
+    # Configurer le mock pour la réactivation
+    mock_stripe["modify_subscription"].return_value.cancel_at_period_end = False
+    
+    payload = {
+        "subscriptionId": TEST_SUBSCRIPTION_ID
+    }
+    response = client.post("/api/subscriptions/reactivate", json=payload, headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "subscription" in data
+    assert data["subscription"]["id"] == TEST_SUBSCRIPTION_ID
+    assert data["subscription"]["cancel_at_period_end"] == False
+    
+    # Vérifier que la méthode Stripe a été appelée avec les bons paramètres
+    mock_stripe["modify_subscription"].assert_called_once_with(
+        TEST_SUBSCRIPTION_ID,
+        cancel_at_period_end=False
+    )
+
+def test_update_payment_method(test_headers, mock_stripe):
+    """Teste la mise à jour de la méthode de paiement."""
+    payload = {
+        "paymentMethodId": TEST_PAYMENT_METHOD_ID
+    }
+    response = client.post("/api/subscriptions/update-payment-method", json=payload, headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] == True
+    assert "payment_method" in data
+    assert data["payment_method"]["id"] == TEST_PAYMENT_METHOD_ID
+    
+    # Vérifier que les méthodes Stripe ont été appelées avec les bons paramètres
+    mock_stripe["attach_payment_method"].assert_called_once_with(
+        TEST_PAYMENT_METHOD_ID,
+        customer=TEST_CUSTOMER_ID
+    )
+    mock_stripe["modify_customer"].assert_called_once()
+    call_args = mock_stripe["modify_customer"].call_args[1]
+    assert call_args["invoice_settings"]["default_payment_method"] == TEST_PAYMENT_METHOD_ID
+
+def test_delete_payment_method(test_headers, mock_stripe):
+    """Teste la suppression d'une méthode de paiement."""
+    response = client.delete(f"/api/subscriptions/payment-methods/{TEST_PAYMENT_METHOD_ID}", headers=test_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] == True
+    
+    # Vérifier que la méthode Stripe a été appelée avec les bons paramètres
+    mock_stripe["detach_payment_method"].assert_called_once_with(TEST_PAYMENT_METHOD_ID)
+
+def test_webhook_payment_succeeded(mock_stripe):
+    """Teste le webhook de paiement réussi."""
+    # Créer un événement Stripe simulé
+    event_data = {
+        "id": "evt_test_webhook_payment_succeeded",
+        "type": "invoice.payment_succeeded",
+        "data": {
+            "object": {
+                "id": TEST_INVOICE_ID,
+                "customer": TEST_CUSTOMER_ID,
+                "subscription": TEST_SUBSCRIPTION_ID,
+                "amount_paid": 1900,
+                "status": "paid"
+            }
+        }
+    }
+    
+    # Configurer le mock pour le webhook
+    mock_stripe["webhook_construct"].return_value = event_data
+    
+    # Générer une signature valide (dans un cas réel)
+    timestamp = int(time.time())
+    payload = json.dumps(event_data)
+    signature = compute_webhook_signature(payload, timestamp, TEST_WEBHOOK_SECRET)
+    
+    # Envoyer la requête webhook
+    response = client.post("/api/subscriptions/webhook", 
+                          headers={"Stripe-Signature": f"t={timestamp},v1={signature}"}, 
+                          content=payload)
+    
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    
+    # Vérifier que l'événement a été construit
+    mock_stripe["webhook_construct"].assert_called_once()
+
+def test_webhook_subscription_updated(mock_stripe):
+    """Teste le webhook de mise à jour d'abonnement."""
+    # Créer un événement Stripe simulé
+    event_data = {
+        "id": "evt_test_webhook_subscription_updated",
+        "type": "customer.subscription.updated",
+        "data": {
+            "object": {
+                "id": TEST_SUBSCRIPTION_ID,
+                "customer": TEST_CUSTOMER_ID,
+                "status": "active",
+                "items": {
+                    "data": [
+                        {
+                            "price": {
+                                "id": TEST_PRICE_ID
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    
+    # Configurer le mock pour le webhook
+    mock_stripe["webhook_construct"].return_value = event_data
+    
+    # Générer une signature valide (dans un cas réel)
+    timestamp = int(time.time())
+    payload = json.dumps(event_data)
+    signature = compute_webhook_signature(payload, timestamp, TEST_WEBHOOK_SECRET)
+    
+    # Envoyer la requête webhook
+    response = client.post("/api/subscriptions/webhook", 
+                          headers={"Stripe-Signature": f"t={timestamp},v1={signature}"}, 
+                          content=payload)
+    
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    
+    # Vérifier que l'événement a été construit
+    mock_stripe["webhook_construct"].assert_called_once()
+
+# Fonctions utilitaires pour les tests
+def compute_webhook_signature(payload, timestamp, secret):
+    """
+    Calcule une signature de webhook Stripe valide pour les tests.
+    """
+    signed_payload = f"{timestamp}.{payload}"
+    signature = hmac.new(
+        secret.encode('utf-8'),
+        signed_payload.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
+if __name__ == "__main__":
+    # Exécution directe des tests
+    pytest.main(["-xvs", __file__])

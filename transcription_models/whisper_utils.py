@@ -1,7 +1,7 @@
 """
-Module d'utilisation de Whisper pour la transcription audio
+Whisper usage module for audio transcription
 ----------------------------------------------------------
-Ce module fournit des fonctions pour la transcription audio avec le modèle Whisper.
+This module provides functions for audio transcription with the Whisper model.
 """
 
 import os
@@ -13,16 +13,16 @@ from typing import Dict, Any, Optional, Callable, Union
 # Logging
 logger = logging.getLogger("transcription.whisper")
 
-# Vérifier les dépendances
+# Check dependencies
 try:
     import whisper
     import torch
     WHISPER_AVAILABLE = True
 except ImportError:
     WHISPER_AVAILABLE = False
-    logger.warning("Whisper n'est pas disponible. La transcription sera désactivée.")
+    logger.warning("Whisper is not available. Transcription will be disabled.")
 
-# Modèle global pour réutilisation
+# Global model for reuse
 whisper_model = None
 current_model_size = None
 
@@ -32,35 +32,35 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def get_whisper_model(model_size: Optional[str] = None) -> Any:
     """
-    Charge ou récupère le modèle Whisper
+    Loads or retrieves the Whisper model
     
     Args:
-        model_size: Taille du modèle Whisper à utiliser ('tiny', 'base', 'small', 'medium', 'large')
+        model_size: Size of the Whisper model to use ('tiny', 'base', 'small', 'medium', 'large')
         
     Returns:
-        Instance du modèle Whisper
+        Whisper model instance
         
     Raises:
-        ImportError: Si Whisper n'est pas disponible
+        ImportError: If Whisper is not available
     """
     global whisper_model, current_model_size
     
     if not WHISPER_AVAILABLE:
-        raise ImportError("Whisper est requis pour la transcription")
+        raise ImportError("Whisper is required for transcription")
     
-    # Définir la taille du modèle
+    # Define model size
     selected_size = model_size or WHISPER_MODEL_SIZE
     
-    # Vérifier si nous devons charger un nouveau modèle
+    # Check if we need to load a new model
     if whisper_model is None or current_model_size != selected_size:
-        # Libérer la mémoire si un modèle était déjà chargé
+        # Free memory if a model was already loaded
         if whisper_model is not None:
             del whisper_model
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         
-        logger.info(f"Chargement du modèle Whisper {selected_size}...")
+        logger.info(f"Loading Whisper model {selected_size}...")
         whisper_model = whisper.load_model(selected_size, device=DEVICE)
         current_model_size = selected_size
         
@@ -74,65 +74,65 @@ def transcribe_audio(
     **whisper_options
 ) -> Dict[str, Any]:
     """
-    Transcrit un fichier audio en texte
+    Transcribes an audio file to text
     
     Args:
-        audio_path: Chemin vers le fichier audio
-        model_size: Taille du modèle Whisper à utiliser
-        language: Code de langue pour la transcription (ex: 'fr', 'en')
-        progress: Fonction de suivi de progression (facultatif)
-        whisper_options: Options supplémentaires à passer à Whisper
+        audio_path: Path to the audio file
+        model_size: Size of the Whisper model to use
+        language: Language code for transcription (e.g., 'fr', 'en')
+        progress: Progress tracking function (optional)
+        whisper_options: Additional options to pass to Whisper
         
     Returns:
-        Dictionnaire contenant les résultats de la transcription
+        Dictionary containing the transcription results
         
     Raises:
-        ImportError: Si Whisper n'est pas disponible
-        Exception: Si une erreur survient pendant la transcription
+        ImportError: If Whisper is not available
+        Exception: If an error occurs during transcription
     """
     try:
         if progress:
-            progress(0.4, desc="Chargement du modèle de transcription...")
+            progress(0.4, desc="Loading transcription model...")
         
-        # Charger le modèle Whisper
+        # Load the Whisper model
         model = get_whisper_model(model_size)
         
         if progress:
-            progress(0.5, desc="Transcription audio en cours...")
+            progress(0.5, desc="Audio transcription in progress...")
         
-        # Préparer les options de transcription
+        # Prepare transcription options
         options = {
             "fp16": torch.cuda.is_available(),
             "verbose": False
         }
         
-        # Ajouter la langue si spécifiée
+        # Add language if specified
         if language:
             options["language"] = language
             
-        # Ajouter les options supplémentaires
+        # Add additional options
         options.update(whisper_options)
         
-        # Transcrire l'audio
+        # Transcribe the audio
         result = model.transcribe(audio_path, **options)
         
         if progress:
-            progress(0.8, desc="Transcription terminée")
+            progress(0.8, desc="Transcription completed")
         
         return result
         
     except Exception as e:
-        error_msg = f"Erreur lors de la transcription: {str(e)}"
+        error_msg = f"Error during transcription: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         raise Exception(error_msg)
 
 def cleanup_whisper_model() -> bool:
     """
-    Libère la mémoire du modèle Whisper
+    Frees the Whisper model memory
     
     Returns:
-        True si le modèle a été libéré, False sinon
+        True if the model was freed, False otherwise
     """
     global whisper_model, current_model_size
     
@@ -148,16 +148,16 @@ def cleanup_whisper_model() -> bool:
                 
             return True
         except Exception as e:
-            logger.error(f"Erreur lors de la libération du modèle Whisper: {str(e)}")
+            logger.error(f"Error when freeing the Whisper model: {str(e)}")
             
     return False
 
 def get_available_whisper_models() -> Dict[str, Dict[str, Any]]:
     """
-    Retourne les modèles Whisper disponibles avec leurs caractéristiques
+    Returns available Whisper models with their characteristics
     
     Returns:
-        Dictionnaire des modèles disponibles
+        Dictionary of available models
     """
     if not WHISPER_AVAILABLE:
         return {}
@@ -172,14 +172,14 @@ def get_available_whisper_models() -> Dict[str, Dict[str, Any]]:
 
 def format_whisper_result(result: Dict[str, Any], include_timestamps: bool = True) -> str:
     """
-    Formate le résultat de Whisper en texte lisible
+    Formats the Whisper result into readable text
     
     Args:
-        result: Résultat de la transcription Whisper
-        include_timestamps: Inclure les horodatages dans la sortie
+        result: Whisper transcription result
+        include_timestamps: Include timestamps in the output
         
     Returns:
-        Texte formaté
+        Formatted text
     """
     if not include_timestamps:
         return result["text"].strip()
@@ -195,13 +195,13 @@ def format_whisper_result(result: Dict[str, Any], include_timestamps: bool = Tru
 
 def format_time(seconds: float) -> str:
     """
-    Formate les secondes en format hh:mm:ss
+    Formats seconds into hh:mm:ss format
     
     Args:
-        seconds: Nombre de secondes
+        seconds: Number of seconds
         
     Returns:
-        Chaîne formatée
+        Formatted string
     """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)

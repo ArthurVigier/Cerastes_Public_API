@@ -1,0 +1,235 @@
+"""
+Exemples d'appels à l'API d'analyse vidéo
+------------------------------------------
+
+Ce script démontre comment appeler les nouveaux endpoints d'analyse vidéo
+ajoutés à l'API d'inférence multi-session.
+"""
+
+import requests
+import json
+import time
+import os
+from pprint import pprint
+
+# Configuration
+API_URL = "http://localhost:8000"  # URL de l'API
+API_KEY = "votre_clé_api"  # Remplacer par une clé API valide
+
+# Chemins des fichiers vidéo à analyser
+VIDEO_FILE_MANIPULATION = "path/to/your/video_manipulation_sample.mp4"
+VIDEO_FILE_NONVERBAL = "path/to/your/nonverbal_sample.mp4"
+
+def check_api_health():
+    """Vérifie si l'API est en fonctionnement"""
+    response = requests.get(f"{API_URL}/api/health")
+    if response.status_code == 200:
+        print("✅ L'API est opérationnelle")
+        return True
+    else:
+        print("❌ L'API n'est pas accessible")
+        return False
+
+def analyze_video_manipulation(video_path):
+    """Soumet une vidéo pour analyse des stratégies de manipulation"""
+    headers = {
+        "X-API-Key": API_KEY
+    }
+    
+    with open(video_path, "rb") as video_file:
+        files = {
+            "file": (os.path.basename(video_path), video_file, "video/mp4")
+        }
+        data = {
+            "keep_video": "false"
+        }
+        
+        print("📤 Envoi de la vidéo pour analyse des stratégies de manipulation...")
+        response = requests.post(
+            f"{API_URL}/api/video/manipulation-analysis",
+            headers=headers,
+            files=files,
+            data=data
+        )
+    
+    if response.status_code != 200:
+        print(f"❌ Erreur: {response.status_code} - {response.text}")
+        return None
+    
+    result = response.json()
+    print(f"✅ Tâche créée avec ID: {result['task_id']}")
+    
+    return result["task_id"]
+
+def analyze_nonverbal_behavior(video_path):
+    """Soumet une vidéo pour analyse des comportements non-verbaux"""
+    headers = {
+        "X-API-Key": API_KEY
+    }
+    
+    with open(video_path, "rb") as video_file:
+        files = {
+            "file": (os.path.basename(video_path), video_file, "video/mp4")
+        }
+        data = {
+            "keep_video": "false"
+        }
+        
+        print("📤 Envoi de la vidéo pour analyse des comportements non-verbaux...")
+        response = requests.post(
+            f"{API_URL}/api/video/nonverbal-analysis",
+            headers=headers,
+            files=files,
+            data=data
+        )
+    
+    if response.status_code != 200:
+        print(f"❌ Erreur: {response.status_code} - {response.text}")
+        return None
+    
+    result = response.json()
+    print(f"✅ Tâche créée avec ID: {result['task_id']}")
+    
+    return result["task_id"]
+
+def check_task_status(task_id):
+    """Vérifie l'état d'une tâche d'analyse vidéo"""
+    headers = {
+        "X-API-Key": API_KEY
+    }
+    
+    response = requests.get(
+        f"{API_URL}/api/video/tasks/{task_id}",
+        headers=headers
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ Erreur: {response.status_code} - {response.text}")
+        return None
+    
+    return response.json()
+
+def wait_for_completion(task_id, max_wait_time=600):
+    """Attend la fin d'une tâche d'analyse vidéo"""
+    print(f"⏳ Attente de la fin de la tâche {task_id}...")
+    
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_time:
+        task_info = check_task_status(task_id)
+        
+        if not task_info:
+            print("❌ Impossible de récupérer l'état de la tâche")
+            return None
+        
+        status = task_info["status"]
+        progress = task_info.get("progress", 0)
+        message = task_info.get("message", "")
+        
+        print(f"📊 Statut: {status} - Progression: {progress:.1f}% - Message: {message}")
+        
+        if status == "completed":
+            print("✅ Traitement terminé!")
+            return task_info
+        
+        if status == "failed":
+            print(f"❌ Échec du traitement: {task_info.get('error', 'Erreur inconnue')}")
+            return task_info
+        
+        # Attendre avant de vérifier à nouveau
+        time.sleep(10)
+    
+    print(f"⚠️ Délai d'attente dépassé ({max_wait_time} secondes)")
+    return None
+
+def list_video_tasks():
+    """Liste les tâches d'analyse vidéo"""
+    headers = {
+        "X-API-Key": API_KEY
+    }
+    
+    response = requests.get(
+        f"{API_URL}/api/video/tasks",
+        headers=headers
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ Erreur: {response.status_code} - {response.text}")
+        return None
+    
+    tasks = response.json()
+    print(f"📋 Nombre total de tâches: {tasks['total']}")
+    
+    for task_id, task_info in tasks.get("tasks", {}).items():
+        print(f"- {task_id}: {task_info['status']} ({task_info.get('type', 'unknown')})")
+    
+    return tasks
+
+def delete_task(task_id):
+    """Supprime une tâche d'analyse vidéo"""
+    headers = {
+        "X-API-Key": API_KEY
+    }
+    
+    response = requests.delete(
+        f"{API_URL}/api/video/tasks/{task_id}",
+        headers=headers
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ Erreur: {response.status_code} - {response.text}")
+        return False
+    
+    print(f"🗑️ Tâche {task_id} supprimée avec succès")
+    return True
+
+def save_results(task_info, output_file):
+    """Sauvegarde les résultats d'une tâche d'analyse vidéo"""
+    if "results" not in task_info:
+        print("❌ Aucun résultat disponible")
+        return False
+    
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(task_info["results"], f, ensure_ascii=False, indent=2)
+    
+    print(f"💾 Résultats sauvegardés dans {output_file}")
+    return True
+
+def main():
+    """Fonction principale pour démontrer l'utilisation de l'API d'analyse vidéo"""
+    # Vérifier l'état de l'API
+    if not check_api_health():
+        return
+    
+    # Exemple 1: Analyse des stratégies de manipulation
+    if os.path.exists(VIDEO_FILE_MANIPULATION):
+        print("\n📹 Exemple 1: Analyse des stratégies de manipulation vidéo")
+        task_id = analyze_video_manipulation(VIDEO_FILE_MANIPULATION)
+        
+        if task_id:
+            task_info = wait_for_completion(task_id)
+            
+            if task_info and task_info["status"] == "completed":
+                save_results(task_info, "manipulation_analysis_results.json")
+    else:
+        print(f"⚠️ Fichier vidéo non trouvé: {VIDEO_FILE_MANIPULATION}")
+    
+    # Exemple 2: Analyse des comportements non-verbaux
+    if os.path.exists(VIDEO_FILE_NONVERBAL):
+        print("\n📹 Exemple 2: Analyse des comportements non-verbaux")
+        task_id = analyze_nonverbal_behavior(VIDEO_FILE_NONVERBAL)
+        
+        if task_id:
+            task_info = wait_for_completion(task_id)
+            
+            if task_info and task_info["status"] == "completed":
+                save_results(task_info, "nonverbal_analysis_results.json")
+    else:
+        print(f"⚠️ Fichier vidéo non trouvé: {VIDEO_FILE_NONVERBAL}")
+    
+    # Liste des tâches
+    print("\n📋 Liste des tâches d'analyse vidéo:")
+    list_video_tasks()
+
+if __name__ == "__main__":
+    main()

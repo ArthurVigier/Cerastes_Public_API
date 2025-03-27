@@ -1,8 +1,8 @@
 """
-Module de diarisation pour la transcription vidéo
+Speaker diarization module for video transcription
 ------------------------------------------------
-Ce module fournit des fonctions pour l'identification des locuteurs (diarisation)
-dans des fichiers audio et pour l'attribution des locuteurs aux segments de transcription.
+This module provides functions for speaker identification (diarization)
+in audio files and for attributing speakers to transcription segments.
 """
 
 import os
@@ -10,46 +10,46 @@ import logging
 import traceback
 from typing import List, Dict, Tuple, Optional, Callable, Any, Union
 
-# Configuration du logging
+# Logging configuration
 logger = logging.getLogger("transcription.diarization")
 
-# Vérifier les dépendances optionnelles
+# Check optional dependencies
 try:
     from pyannote.audio import Pipeline
     PYANNOTE_AVAILABLE = True
 except ImportError:
     PYANNOTE_AVAILABLE = False
-    logger.warning("Pyannote.audio non disponible. La diarisation sera désactivée.")
+    logger.warning("Pyannote.audio not available. Diarization will be disabled.")
 
 # Configuration
 HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "")
 DIARIZATION_MODEL = "pyannote/speaker-diarization-3.1"
 
-# Variable globale pour le modèle
+# Global variable for the model
 diarization_pipeline = None
 
 def load_diarization_model(huggingface_token: Optional[str] = None):
     """
-    Charge le modèle de diarisation
+    Loads the diarization model
     
     Args:
-        huggingface_token: Token Hugging Face pour l'accès au modèle
+        huggingface_token: Hugging Face token for model access
         
     Returns:
-        Pipeline de diarisation
+        Diarization pipeline
         
     Raises:
-        ImportError: Si pyannote.audio n'est pas disponible
-        ValueError: Si aucun token n'est fourni
+        ImportError: If pyannote.audio is not available
+        ValueError: If no token is provided
     """
     global diarization_pipeline
     
     if not PYANNOTE_AVAILABLE:
-        raise ImportError("Pyannote.audio est requis pour la diarisation")
+        raise ImportError("Pyannote.audio is required for diarization")
     
     token = huggingface_token or HUGGINGFACE_TOKEN
     if not token:
-        raise ValueError("Un token Hugging Face est requis pour la diarisation")
+        raise ValueError("A Hugging Face token is required for diarization")
     
     if diarization_pipeline is None:
         diarization_pipeline = Pipeline.from_pretrained(
@@ -65,46 +65,46 @@ def diarize_audio(
     progress: Optional[Callable] = None
 ) -> List[Tuple[float, float, str]]:
     """
-    Identifie les locuteurs dans un fichier audio
+    Identifies speakers in an audio file
     
     Args:
-        audio_path: Chemin vers le fichier audio
-        huggingface_token: Token Hugging Face pour l'accès au modèle
-        progress: Fonction de suivi de progression (facultatif)
+        audio_path: Path to the audio file
+        huggingface_token: Hugging Face token for model access
+        progress: Progress tracking function (optional)
         
     Returns:
-        Liste de segments avec informations sur les locuteurs (start, end, speaker)
+        List of segments with speaker information (start, end, speaker)
         
     Raises:
-        ImportError: Si pyannote.audio n'est pas disponible
-        ValueError: Si aucun token n'est fourni
-        Exception: Si une erreur survient pendant la diarisation
+        ImportError: If pyannote.audio is not available
+        ValueError: If no token is provided
+        Exception: If an error occurs during diarization
     """
     try:
         if progress:
-            progress(0.6, desc="Chargement du modèle de diarisation...")
+            progress(0.6, desc="Loading diarization model...")
         
-        # Initialiser le pipeline de diarisation
+        # Initialize diarization pipeline
         pipeline = load_diarization_model(huggingface_token)
         
         if progress:
-            progress(0.7, desc="Identification des locuteurs en cours...")
+            progress(0.7, desc="Speaker identification in progress...")
         
-        # Effectuer la diarisation
+        # Perform diarization
         diarization = pipeline(audio_path)
         
-        # Extraire les segments avec locuteurs
+        # Extract segments with speakers
         speaker_segments = []
         for segment, _, speaker in diarization.itertracks(yield_label=True):
             speaker_segments.append((segment.start, segment.end, speaker))
         
         if progress:
-            progress(0.9, desc="Identification des locuteurs terminée")
+            progress(0.9, desc="Speaker identification completed")
         
         return speaker_segments
         
     except Exception as e:
-        error_msg = f"Erreur lors de la diarisation: {str(e)}"
+        error_msg = f"Error during diarization: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         raise Exception(error_msg)
@@ -114,14 +114,14 @@ def assign_speakers(
     diarization: List[Tuple[float, float, str]]
 ) -> List[Dict[str, Any]]:
     """
-    Associe les locuteurs identifiés aux segments de transcription
+    Associates identified speakers with transcription segments
     
     Args:
-        transcription: Résultat de la transcription avec Whisper
-        diarization: Résultat de la diarisation avec Pyannote
+        transcription: Transcription result from Whisper
+        diarization: Diarization result from Pyannote
         
     Returns:
-        Liste de segments avec texte et locuteur attribué
+        List of segments with text and assigned speaker
     """
     final_transcription = []
     
@@ -131,11 +131,11 @@ def assign_speakers(
         start, end, text = segment["start"], segment["end"], segment["text"]
         speaker = "Unknown"
         
-        # Trouver le locuteur principal pour ce segment
+        # Find the main speaker for this segment
         speaker_times = {}
         
         for d_start, d_end, d_speaker in diarization:
-            # Calculer le chevauchement
+            # Calculate overlap
             overlap_start = max(d_start, start)
             overlap_end = min(d_end, end)
             
@@ -147,11 +147,11 @@ def assign_speakers(
                 else:
                     speaker_times[d_speaker] = overlap_duration
         
-        # Sélectionner le locuteur avec le plus de temps de parole dans ce segment
+        # Select the speaker with the most speaking time in this segment
         if speaker_times:
             speaker = max(speaker_times, key=speaker_times.get)
         
-        # Ajouter le segment avec son locuteur
+        # Add the segment with its speaker
         final_transcription.append({
             "start": start,
             "end": end,
@@ -166,14 +166,14 @@ def format_diarized_transcription(
     include_timestamps: bool = True
 ) -> str:
     """
-    Formate la transcription diarisée en texte lisible
+    Formats the diarized transcription into readable text
     
     Args:
-        transcription: Liste de segments avec texte et locuteur
-        include_timestamps: Inclure les horodatages dans la sortie
+        transcription: List of segments with text and speaker
+        include_timestamps: Include timestamps in the output
         
     Returns:
-        Texte formaté avec locuteurs
+        Formatted text with speakers
     """
     formatted_text = []
     current_speaker = None
@@ -184,7 +184,7 @@ def format_diarized_transcription(
         start = segment["start"]
         end = segment["end"]
         
-        # Formater le texte du segment
+        # Format the segment text
         if speaker != current_speaker:
             current_speaker = speaker
             if include_timestamps:
@@ -201,13 +201,13 @@ def format_diarized_transcription(
 
 def format_time(seconds: float) -> str:
     """
-    Formate les secondes en format hh:mm:ss
+    Formats seconds into hh:mm:ss format
     
     Args:
-        seconds: Nombre de secondes
+        seconds: Number of seconds
         
     Returns:
-        Chaîne formatée
+        Formatted string
     """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)

@@ -1,7 +1,7 @@
 """
-Module d'extraction audio pour la transcription vidéo
+Audio extraction module for video transcription
 -----------------------------------------------------
-Ce module fournit des fonctions pour l'extraction audio à partir de fichiers vidéo.
+This module provides functions for audio extraction from video files.
 """
 
 import os
@@ -11,18 +11,18 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Optional, Callable, Union
 
-# Configuration du logging
+# Logging configuration
 logger = logging.getLogger("transcription.audio_extraction")
 
-# Vérifier les dépendances optionnelles
+# Check optional dependencies
 try:
     from moviepy.editor import AudioFileClip
     MOVIEPY_AVAILABLE = True
 except ImportError:
     MOVIEPY_AVAILABLE = False
-    logger.warning("MoviePy non disponible. La conversion audio sera désactivée.")
+    logger.warning("MoviePy not available. Audio conversion will be disabled.")
 
-# Configuration des chemins
+# Path configuration
 AUDIO_TMP_DIR = Path("uploads/audio")
 AUDIO_TMP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -34,85 +34,85 @@ def extract_audio(
     codec: str = "pcm_s16le"
 ) -> str:
     """
-    Extrait l'audio d'une vidéo et le sauvegarde dans un fichier
+    Extracts audio from a video and saves it to a file
     
     Args:
-        video_path: Chemin vers le fichier vidéo
-        audio_path: Chemin de sortie pour le fichier audio (facultatif)
-        progress: Fonction de suivi de progression (facultatif)
-        audio_format: Format du fichier audio (par défaut: "wav")
-        codec: Codec audio à utiliser (par défaut: "pcm_s16le")
+        video_path: Path to the video file
+        audio_path: Output path for the audio file (optional)
+        progress: Progress tracking function (optional)
+        audio_format: Audio file format (default: "wav")
+        codec: Audio codec to use (default: "pcm_s16le")
         
     Returns:
-        Chemin vers le fichier audio extrait
+        Path to the extracted audio file
         
     Raises:
-        ImportError: Si MoviePy n'est pas disponible
-        Exception: Si une erreur survient pendant l'extraction
+        ImportError: If MoviePy is not available
+        Exception: If an error occurs during extraction
     """
     if not MOVIEPY_AVAILABLE:
-        raise ImportError("MoviePy est requis pour l'extraction audio")
+        raise ImportError("MoviePy is required for audio extraction")
     
     if progress:
-        progress(0.1, desc="Extraction de l'audio de la vidéo...")
+        progress(0.1, desc="Extracting audio from video...")
     
     try:
-        # Créer un fichier temporaire si aucun chemin n'est spécifié
+        # Create a temporary file if no path is specified
         if audio_path is None:
             audio_file = NamedTemporaryFile(delete=False, suffix=f".{audio_format}", dir=AUDIO_TMP_DIR)
             audio_path = audio_file.name
             audio_file.close()
         
-        # Extraire l'audio
+        # Extract audio
         audio = AudioFileClip(video_path)
         audio.write_audiofile(audio_path, codec=codec, verbose=False, logger=None)
         
         if progress:
-            progress(0.3, desc="Extraction audio terminée")
+            progress(0.3, desc="Audio extraction completed")
         
         return audio_path
         
     except Exception as e:
-        error_msg = f"Erreur lors de l'extraction audio: {str(e)}"
+        error_msg = f"Error during audio extraction: {str(e)}"
         logger.error(error_msg)
         logger.error(traceback.format_exc())
         raise Exception(error_msg)
 
 def cleanup_audio_file(audio_path: str) -> bool:
     """
-    Supprime un fichier audio temporaire
+    Deletes a temporary audio file
     
     Args:
-        audio_path: Chemin vers le fichier audio à supprimer
+        audio_path: Path to the audio file to delete
         
     Returns:
-        True si le fichier a été supprimé, False sinon
+        True if the file was deleted, False otherwise
     """
     if audio_path and isinstance(audio_path, str) and os.path.exists(audio_path):
-        # Vérifier si c'est un fichier temporaire dans notre répertoire
+        # Check if it's a temporary file in our directory
         if audio_path.startswith(str(AUDIO_TMP_DIR)):
             try:
                 os.unlink(audio_path)
                 return True
             except Exception as e:
-                logger.warning(f"Impossible de supprimer le fichier audio temporaire: {str(e)}")
+                logger.warning(f"Unable to delete temporary audio file: {str(e)}")
     return False
 
 def get_audio_duration(audio_path: str) -> float:
     """
-    Obtient la durée d'un fichier audio en secondes
+    Gets the duration of an audio file in seconds
     
     Args:
-        audio_path: Chemin vers le fichier audio
+        audio_path: Path to the audio file
         
     Returns:
-        Durée en secondes
+        Duration in seconds
         
     Raises:
-        ImportError: Si MoviePy n'est pas disponible
+        ImportError: If MoviePy is not available
     """
     if not MOVIEPY_AVAILABLE:
-        raise ImportError("MoviePy est requis pour obtenir la durée audio")
+        raise ImportError("MoviePy is required to get audio duration")
     
     try:
         audio = AudioFileClip(audio_path)
@@ -120,5 +120,5 @@ def get_audio_duration(audio_path: str) -> float:
         audio.close()
         return duration
     except Exception as e:
-        logger.error(f"Erreur lors de l'obtention de la durée audio: {str(e)}")
+        logger.error(f"Error getting audio duration: {str(e)}")
         raise

@@ -1,0 +1,395 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { BrowserRouter as Router } from 'react-router-dom';
+import axios from 'axios';
+import MockAdapter from 'axios-mock-adapter';
+
+// Pour résoudre les erreurs d'importation de composants, assurez-vous que ces chemins sont corrects
+// et que les composants existent dans le projet
+import BillingPage from '../src/components/billing/BillingPage';
+import SubscriptionPage from '../src/components/billing/SubscriptionPage';
+import PaymentMethodManager from '../src/components/billing/PaymentMethodManager';
+
+// Ajouter les types Jest pour TypeScript
+/// <reference types="jest" />
+/// <reference types="@testing-library/react" />
+
+// Mock Stripe
+jest.mock('@stripe/react-stripe-js', () => ({
+  ...jest.requireActual('@stripe/react-stripe-js'),
+  CardElement: () => <div data-testid="card-element-mock">Card Element</div>,
+  useStripe: () => ({
+    createPaymentMethod: jest.fn().mockResolvedValue({
+      paymentMethod: { id: 'pm_test123' },
+    }),
+    confirmCardPayment: jest.fn().mockResolvedValue({
+      paymentIntent: { status: 'succeeded' },
+    }),
+  }),
+  useElements: () => ({
+    getElement: jest.fn(),
+  }),
+}));
+
+jest.mock('@stripe/stripe-js', () => ({
+  loadStripe: jest.fn(),
+}));
+
+// Mock localStorage avec types explicites
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: jest.fn((key: string) => store[key] || null),
+    setItem: jest.fn((key: string, value: string) => {
+      store[key] = value.toString();
+    }),
+    clear: jest.fn(() => {
+      store = {};
+    }),
+    removeItem: jest.fn((key: string) => {
+      delete store[key];
+    }),
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
+// Sample data for tests
+const mockSubscription = {
+  id: 'sub_123456789',
+  status: 'active',
+  current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  cancel_at_period_end: false,
+  planId: 'plan_basic',
+  planName: 'Basic Plan',
+};
+
+const mockInvoices = [
+  {
+    id: 'in_123456789',
+    number: 'INV-001',
+    amount: 19.99,
+    currency: 'usd',
+    status: 'paid',
+    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    due_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    pdf: 'https://example.com/invoice.pdf',
+  },
+];
+
+const mockPaymentMethods = [
+  {
+    id: 'pm_123456789',
+    type: 'card',
+    last4: '4242',
+    brand: 'visa',
+    exp_month: 12,
+    exp_year: 2025,
+    is_default: true,
+  },
+];
+
+const mockUsageStats = {
+  daily_requests: 25,
+  daily_limit: 50,
+  monthly_requests: 150,
+  monthly_limit: 500,
+  total_tokens: 15000,
+  total_tokens_input: 5000,
+  total_tokens_output: 10000,
+};
+
+// Setup tests
+beforeEach(() => {
+  jest.clearAllMocks();
+  localStorageMock.setItem('authToken', 'fake-jwt-token');
+});
+
+describe('BillingPage Component', () => {
+  let mockAxios: MockAdapter;
+  
+  beforeEach(() => {
+    mockAxios = new MockAdapter(axios);
+    
+    // Mock API endpoints
+    mockAxios.onGet('/api/subscriptions/current').reply(200, { subscription: mockSubscription });
+    mockAxios.onGet('/api/subscriptions/invoices').reply(200, { invoices: mockInvoices });
+    mockAxios.onGet('/api/auth/usage-stats').reply(200, mockUsageStats);
+    mockAxios.onGet('/api/subscriptions/payment-methods').reply(200, { payment_methods: mockPaymentMethods });
+  });
+  
+  afterEach(() => {
+    mockAxios.restore();
+  });
+  
+  test('renders subscription information correctly', async () => {
+    render(
+      <Router>
+        <BillingPage />
+      </Router>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('Current Subscription')).toBeInTheDocument();
+    });
+    
+    // Check that subscription details are displayed
+    expect(screen.getByText('Basic Plan')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    
+    // Check that usage stats are displayed
+    expect(screen.getByText('API Requests Today')).toBeInTheDocument();
+    expect(screen.getByText('25')).toBeInTheDocument();
+    expect(screen.getByText('150')).toBeInTheDocument();
+  });
+  
+  test('can switch between tabs', async () => {
+    render(
+      <Router>
+        <BillingPage />
+      </Router>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('Current Subscription')).toBeInTheDocument();
+    });
+    
+    // Switch to Payment Methods tab
+    fireEvent.click(screen.getByText('Payment Methods'));
+    
+    // Check that payment methods tab is displayed
+    await waitFor(() => {
+      expect(screen.getByText('•••• 4242')).toBeInTheDocument();
+    });
+    
+    // Switch to Billing History tab
+    fireEvent.click(screen.getByText('Billing History'));
+    
+    // Check that invoices are displayed
+    await waitFor(() => {
+      expect(screen.getByText('Invoice INV-001')).toBeInTheDocument();
+    });
+  });
+  
+  test('handles cancellation of subscription', async () => {
+    // Mock cancel API endpoint
+    mockAxios.onPost('/api/subscriptions/cancel').reply(200, {
+      subscription: {
+        ...mockSubscription,
+        cancel_at_period_end: true,
+      }
+    });
+    
+    const confirmSpy = jest.spyOn(window, 'confirm');
+    confirmSpy.mockImplementation(() => true);
+    
+    render(
+      <Router>
+        <BillingPage />
+      </Router>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('Current Subscription')).toBeInTheDocument();
+    });
+    
+    // Click on Cancel Subscription
+    fireEvent.click(screen.getByText('Cancel Subscription'));
+    
+    // Confirm the cancellation
+    expect(confirmSpy).toHaveBeenCalled();
+    
+    // Check that cancellation message is displayed
+    await waitFor(() => {
+      expect(screen.getByText(/Your subscription will be canceled/)).toBeInTheDocument();
+    });
+    
+    confirmSpy.mockRestore();
+  });
+});
+
+describe('SubscriptionPage Component', () => {
+  let mockAxios: MockAdapter;
+  
+  beforeEach(() => {
+    mockAxios = new MockAdapter(axios);
+    
+    // Mock API endpoints
+    mockAxios.onGet('/api/subscriptions/current').reply(200, { subscription: mockSubscription });
+    mockAxios.onPost('/api/subscriptions/create-subscription').reply(200, {
+      clientSecret: 'pi_1234_secret_5678',
+      subscription: { id: 'sub_new', status: 'incomplete' }
+    });
+  });
+  
+  afterEach(() => {
+    mockAxios.restore();
+  });
+  
+  test('renders subscription plans correctly', async () => {
+    render(
+      <Elements stripe={loadStripe('pk_test_xxx')}>
+        <SubscriptionPage />
+      </Elements>
+    );
+    
+    // Check that plans are displayed
+    expect(screen.getByText('Free')).toBeInTheDocument();
+    expect(screen.getByText('Basic')).toBeInTheDocument();
+    expect(screen.getByText('Premium')).toBeInTheDocument();
+    expect(screen.getByText('Enterprise')).toBeInTheDocument();
+  });
+  
+  test('can select a plan and open checkout', async () => {
+    render(
+      <Elements stripe={loadStripe('pk_test_xxx')}>
+        <SubscriptionPage />
+      </Elements>
+    );
+    
+    // Find and click on the Premium plan
+    const premiumButtons = screen.getAllByText('Select Plan');
+    fireEvent.click(premiumButtons[1]); // Premium plan button
+    
+    // Check that checkout form is displayed
+    await waitFor(() => {
+      expect(screen.getByText(/Subscribe to Premium Plan/)).toBeInTheDocument();
+      expect(screen.getByTestId('card-element-mock')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('PaymentMethodManager Component', () => {
+  let mockAxios: MockAdapter;
+  
+  beforeEach(() => {
+    mockAxios = new MockAdapter(axios);
+    
+    // Mock API endpoints
+    mockAxios.onGet('/api/subscriptions/payment-methods').reply(200, { payment_methods: mockPaymentMethods });
+    mockAxios.onPost('/api/subscriptions/update-payment-method').reply(200, {
+      success: true,
+      payment_method: {
+        id: 'pm_new',
+        type: 'card',
+        last4: '1234',
+        brand: 'mastercard',
+        exp_month: 3,
+        exp_year: 2024
+      }
+    });
+    mockAxios.onDelete('/api/subscriptions/payment-methods/pm_123456789').reply(200, { success: true });
+  });
+  
+  afterEach(() => {
+    mockAxios.restore();
+  });
+  
+  test('renders payment methods correctly', async () => {
+    render(
+      <Elements stripe={loadStripe('pk_test_xxx')}>
+        <PaymentMethodManager />
+      </Elements>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('•••• 4242')).toBeInTheDocument();
+    });
+    
+    // Check that card details are displayed
+    expect(screen.getByText(/Visa/)).toBeInTheDocument();
+    expect(screen.getByText(/Default/)).toBeInTheDocument();
+  });
+  
+  test('can add a new payment method', async () => {
+    render(
+      <Elements stripe={loadStripe('pk_test_xxx')}>
+        <PaymentMethodManager />
+      </Elements>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('Add Payment Method')).toBeInTheDocument();
+    });
+    
+    // Click on Add Payment Method
+    fireEvent.click(screen.getByText('Add Payment Method'));
+    
+    // Check that form is displayed
+    await waitFor(() => {
+      expect(screen.getByText('Add New Payment Method')).toBeInTheDocument();
+      expect(screen.getByTestId('card-element-mock')).toBeInTheDocument();
+    });
+  });
+  
+  test('can delete a payment method', async () => {
+    const confirmSpy = jest.spyOn(window, 'confirm');
+    confirmSpy.mockImplementation(() => true);
+    
+    render(
+      <Elements stripe={loadStripe('pk_test_xxx')}>
+        <PaymentMethodManager />
+      </Elements>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('Remove')).toBeInTheDocument();
+    });
+    
+    // Click on Remove
+    fireEvent.click(screen.getByText('Remove'));
+    
+    // Confirm the deletion
+    expect(confirmSpy).toHaveBeenCalled();
+    
+    // Check that API was called
+    await waitFor(() => {
+      expect(mockAxios.history.delete.length).toBe(1);
+      expect(mockAxios.history.delete[0].url).toBe('/api/subscriptions/payment-methods/pm_123456789');
+    });
+    // Check that payment method is removed
+    await waitFor(() => {
+      expect(screen.queryByText('•••• 4242')).not.toBeInTheDocument();
+    });
+    confirmSpy.mockRestore();
+  });
+  
+  test('handles errors when adding a payment method', async () => {
+    // Mock error response
+    mockAxios.onPost('/api/subscriptions/update-payment-method').reply(400, {
+      error: 'Invalid card details',
+    });
+    
+    render(
+      <Elements stripe={loadStripe('pk_test_xxx')}>
+        <PaymentMethodManager />
+      </Elements>
+    );
+    
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText('Add Payment Method')).toBeInTheDocument();
+    });
+    
+    // Click on Add Payment Method
+    fireEvent.click(screen.getByText('Add Payment Method'));
+    
+    // Simulate form submission
+    fireEvent.click(screen.getByText('Submit'));
+    
+    // Check that error message is displayed
+    await waitFor(() => {
+      expect(screen.getByText('Invalid card details')).toBeInTheDocument();
+    });
+  });
+});
