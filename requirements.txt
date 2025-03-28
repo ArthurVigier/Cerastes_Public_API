@@ -44,7 +44,7 @@ librosa==0.10.1
 datasets==2.14.6
 optimum==1.14.0
 deepspeed==0.11.0; platform_system != "Darwin"
-einops==0.7.0
+einops==0.3.2  # Modifié pour être compatible avec pyannote-audio 2.1.1
 
 # NLP
 spacy==3.7.2
