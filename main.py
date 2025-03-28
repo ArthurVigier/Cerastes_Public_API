@@ -29,12 +29,9 @@ from api import (
 )
 
 # Importing middlewares
-from middleware import APIKeyMiddleware
-from middleware.translation_middleware import TranslationMiddleware
-from middleware.cache_middleware import CacheMiddleware
-from middleware.security_middleware import SecurityMiddleware
-from middleware.rate_limit_middleware import RateLimitMiddleware
-from middleware.failover_middleware import FailoverMiddleware
+from middleware import SecurityMiddleware, RateLimitMiddleware, CacheMiddleware, TranslationMiddleware, FailoverMiddleware
+# Importer APIKeyMiddleware depuis le fichier racine et non depuis le package middleware
+from middleware import APIKeyMiddleware  # Ce import pointe vers le fichier middleware.py à la racine
 
 # Importing configuration
 from config import setup_logging, app_config, model_config, api_config
