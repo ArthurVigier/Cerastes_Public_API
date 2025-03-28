@@ -21,7 +21,7 @@ numpy==2.2.4
 pandas==2.2.3
 tenacity==9.0.0
 psutil==5.9.6
-pillow==10.2.0
+pillow==11.1.0
 matplotlib==3.10.1
 
 # Traitement video et audio
@@ -40,7 +40,7 @@ jinja2==3.1.6
 
 # IA - Optionnel (peut être séparé en un fichier requirements-extra.txt)
 pyannote.audio==3.3.2; platform_system != "Darwin"
-vllm==0.8.2; platform_system != "Darwin" or platform_machine != "arm64"
+vllm>=0.7.3; platform_system != "Darwin" or platform_machine != "arm64"
 librosa==0.11.0
 datasets==3.5.0
 optimum==1.24.0
