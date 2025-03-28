@@ -50,3 +50,9 @@ class TranscriptionResponse(TaskResponse):
     """Modèle pour les réponses de transcription"""
     video_id: str
     transcription_type: str
+
+class VideoExtractionResponse(BaseModel):
+    """Response model for video extraction operations"""
+    content: str
+    file_path: Optional[str] = None
+    message: str = "Video extraction successful"
