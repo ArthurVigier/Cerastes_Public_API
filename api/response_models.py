@@ -56,3 +56,8 @@ class VideoExtractionResponse(BaseModel):
     content: str
     file_path: Optional[str] = None
     message: str = "Video extraction successful"
+
+class NonverbalAnalysisResponse(BaseModel):
+    """Modèle de réponse pour l'analyse non verbale"""
+    analysis: Any  # Contient l'analyse des indices non verbaux
+    message: str = "Nonverbal cues analysis successful"

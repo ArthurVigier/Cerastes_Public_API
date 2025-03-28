@@ -49,7 +49,7 @@ fi
 # Précharger les modèles si nécessaire
 if [ "$PRELOAD_MODELS" = "true" ]; then
   echo "Préchargement des modèles..."
-  python -c "from model_manager import ModelManager; ModelManager.preload_models()" || echo "Avertissement: Échec du préchargement des modèles"
+  python -c "from model_manager import ModelManager; ModelManager.initialize()" || echo "Avertissement: Échec du préchargement des modèles"
 fi
 
 echo "Démarrage de l'API d'inférence multi-session..."
