@@ -3,11 +3,12 @@
 Script pour exécuter les tests de l'API d'inférence multi-session.
 Ce script permet d'exécuter tous les tests ou des catégories spécifiques.
 """
-
+# Au début de votre fichier run_tests.py, ajoutez:
+import os
+os.environ["SAMPLE_VIDEO_PATH"] = "tests/fixtures/sample_video.mp4"
 import argparse
 import subprocess
 import sys
-import os
 import time
 
 def parse_args():
@@ -22,6 +23,8 @@ def parse_args():
     parser.add_argument("--health", action="store_true", help="Exécuter les tests de santé")
     parser.add_argument("--subscription", action="store_true", help="Exécuter les tests d'abonnement")
     parser.add_argument("--integration", action="store_true", help="Exécuter les tests d'intégration")
+    parser.add_argument("--json-simplifier", action="store_true", help="Exécuter les tests du JSONSimplifier")
+    parser.add_argument("--prompt-manager", action="store_true", help="Exécuter les tests du gestionnaire de prompts")
     parser.add_argument("--all", action="store_true", help="Exécuter tous les tests")
     parser.add_argument("--api-url", type=str, help="URL de base de l'API", default="http://localhost:8000")
     parser.add_argument("--api-key", type=str, help="Clé API à utiliser pour les tests")
@@ -60,7 +63,8 @@ def main():
     # Si aucun test n'est spécifié, exécuter tous les tests
     if not (args.auth or args.inference or args.limits or args.video or 
             args.transcription or args.task or args.health or 
-            args.subscription or args.integration or args.all):
+            args.subscription or args.integration or args.json_simplifier or
+            args.prompt_manager or args.all):
         args.all = True
     
     # Déterminer quels tests exécuter
@@ -83,6 +87,10 @@ def main():
         tests_to_run.append("test_subscription.py")
     if args.integration or args.all:
         tests_to_run.append("test_integration.py")
+    if args.json_simplifier or args.all:
+        tests_to_run.append("test_json_simplifier.py")
+    if args.prompt_manager or args.all:
+        tests_to_run.append("test_prompt_manager.py")
     
     # Afficher les paramètres
     print(f"URL de l'API: {args.api_url}")
