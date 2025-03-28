@@ -36,7 +36,7 @@ accelerate
 huggingface-hub
 tokenizers
 jinja2
-
+whisper
 # IA - Services
 vllm==0.7.3; platform_system != "Darwin" or platform_machine != "arm64"
 librosa

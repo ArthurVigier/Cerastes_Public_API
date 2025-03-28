@@ -256,3 +256,31 @@ def get_available_models() -> Dict[str, Dict[str, Any]]:
     }
     
     return models
+
+# Ajoutez cette fonction à la fin du fichier
+def analyze_transcript(transcription: str, language: Optional[str] = None) -> str:
+    """
+    Analyze a transcription text to extract key points and insights
+    
+    Args:
+        transcription: Text transcription to analyze
+        language: Language of the transcription
+        
+    Returns:
+        Analysis text
+    """
+    from model_manager import ModelManager
+    
+    try:
+        # Get LLM model
+        model = ModelManager.get_instance().get_model("llm")
+        if not model:
+            return "Error: No LLM model available for analysis"
+        
+        # Generate analysis
+        result = model.generate(transcription, max_tokens=1024)
+        return result
+    except Exception as e:
+        logger.error(f"Error during transcription analysis: {str(e)}")
+        logger.error(traceback.format_exc())
+        return f"Error analyzing transcription: {str(e)}"

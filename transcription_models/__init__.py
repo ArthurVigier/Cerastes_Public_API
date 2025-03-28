@@ -10,7 +10,8 @@ from .transcription_core import (
     process_monologue,
     process_multiple_speakers,
     transcribe_external_audio,
-    get_available_models
+    get_available_models,
+    analyze_transcript  # Ajoutez cette ligne
 )
 
 # Exposer des fonctions utilitaires spécifiques qui peuvent être utiles ailleurs
@@ -26,5 +27,6 @@ __all__ = [
     'extract_audio',
     'cleanup_audio_file',
     'cleanup_whisper_model',
-    'format_diarized_transcription'
+    'format_diarized_transcription',
+    'analyze_transcript'  # Ajoutez également cette ligne
 ]
