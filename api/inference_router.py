@@ -395,6 +395,79 @@ async def create_inference_chain(
             detail=f"Error creating task: {str(e)}"
         )
 
+@inference_router.post("/system-final", response_model=TaskResponse)
+async def create_system_final_inference(
+    task_id_1: str = Body(...),
+    task_id_2: str = Body(...),
+    task_id_1_2: str = Body(...),
+    task_id_1_2_1: str = Body(...),
+    model: str = Body(...),
+    max_tokens: Optional[int] = Body(1024),
+    temperature: Optional[float] = Body(0.7),
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Crée une tâche d'inférence finale utilisant les résultats de tâches précédentes"""
+    try:
+        task_id = str(uuid.uuid4())
+        
+        # Vérifier l'existence des tâches précédentes
+        for task_id_check in [task_id_1, task_id_2, task_id_1_2, task_id_1_2_1]:
+            task = get_task_status(task_id_check)
+            if task is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Task {task_id_check} not found"
+                )
+            if task.get("status") != "completed":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Task {task_id_check} is not yet completed"
+                )
+        
+        # Paramètres d'inférence avec les IDs des tâches précédentes
+        params = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "user_id": current_user.username,
+            "task_dependencies": {
+                "task_id_1": task_id_1,
+                "task_id_2": task_id_2,
+                "task_id_1_2": task_id_1_2,
+                "task_id_1_2_1": task_id_1_2_1
+            },
+            "prompt_name": "system_final"
+        }
+        
+        # Lancer la tâche en arrière-plan
+        background_tasks.add_task(
+            run_inference,
+            task_id=task_id,
+            task_type="system_final",
+            params=params
+        )
+        
+        return TaskResponse(
+            task_id=task_id,
+            status="pending",
+            message="System final inference task created"
+        )
+    
+    except ModelNotFoundException as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Model not found: {str(e)}"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating system final inference task: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating task: {str(e)}"
+        )
+
 @inference_router.post("/custom", response_model=TaskResponse)
 async def create_custom_inference(
     text: str = Body(...),
@@ -540,6 +613,7 @@ async def get_tasks(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving tasks: {str(e)}"
         )
+
 
 @inference_router.delete("/task/{task_id}", response_model=SuccessResponse)
 async def cancel_task_endpoint(

@@ -1,0 +1,34 @@
+Analyze the following transcription and identify key points:
+
+{text}
+
+1. Main topics and themes:
+   - Primary subject matter
+   - Secondary subjects
+   - Contextual settings
+
+2. Speaker analysis:
+   - Identified speakers and their roles
+   - Speaking style and language patterns
+   - Expertise level demonstrated
+   - Potential biases or perspectives
+
+3. Content structure:
+   - Introduction and framing
+   - Main arguments or narrative
+   - Supporting evidence and examples
+   - Conclusions or call to action
+
+4. Linguistic patterns:
+   - Tone and formality
+   - Emotional content and emphasis
+   - Specialized terminology
+   - Rhetorical devices
+
+5. Key insights:
+   - Main arguments or claims
+   - Critical facts or statistics
+   - Notable quotations
+   - Surprising or controversial elements
+
+Provide a concise summary that captures the essence of the transcription and its most important elements.
