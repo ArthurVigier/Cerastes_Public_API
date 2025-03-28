@@ -1,0 +1,83 @@
+# API et serveur
+fastapi
+uvicorn
+pydantic
+python-multipart
+email-validator
+
+# Base de données
+sqlalchemy
+alembic
+psycopg2-binary
+
+# Authentification et sécurité
+python-jose
+passlib
+bcrypt
+pyjwt
+
+# Outils de base
+numpy
+pandas
+tenacity
+psutil
+pillow  # Ne pas figer sauf si nécessaire après test
+
+# Traitement vidéo et audio
+opencv-python
+ffmpeg-python
+imageio
+moviepy==1.0.3  # Compatible Pillow et numpy
+
+# IA - Core
+torch==2.1.2  # Stable et requis pour vllm / deepspeed
+transformers==4.49.0
+accelerate
+huggingface-hub  # Version requise résolue automatiquement via transformers
+tokenizers
+jinja2
+
+# IA - Services
+pyannote.audio==2.1.1
+vllm==0.7.3; platform_system != "Darwin" or platform_machine != "arm64"
+librosa
+datasets
+optimum
+deepspeed==0.11.0; platform_system != "Darwin"
+einops==0.3.2  # Compatible avec pyannote.audio
+
+# NLP
+spacy
+sentence-transformers
+scikit-learn
+
+# Modèles spécifiques
+
+
+# Utilitaires
+pyyaml
+aiofiles
+async-timeout
+tqdm
+retry
+colorama
+python-dotenv
+pymongo
+httpx
+
+# Paiements
+stripe
+
+# Tests et développement
+pytest
+pytest-asyncio
+black
+isort
+mypy
+flake8
+
+# Monitoring
+prometheus-client
+langdetect
+sacremoses
+sentencepiece
