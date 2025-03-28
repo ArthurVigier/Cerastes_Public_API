@@ -834,3 +834,33 @@ async def run_system_final_inference(
             "error": str(e),
             "status": "failed"
         }
+
+
+
+def get_available_models(model_type: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Returns a list of available models for inference.
+    
+    Args:
+        model_type: Optional filter for model type
+        
+    Returns:
+        Dictionary with available models information
+    """
+    model_manager = ModelManager.get_instance()
+    
+    # Get models based on type if specified
+    if model_type:
+        if not hasattr(ModelType, model_type.upper()):
+            raise ValueError(f"Invalid model type: {model_type}")
+        
+        model_type_enum = getattr(ModelType, model_type.upper())
+        return model_manager.list_models(model_type=model_type_enum)
+    else:
+        # Return all models grouped by type
+        result = {}
+        for model_type in ModelType:
+            models = model_manager.list_models(model_type=model_type)
+            if models:  # Only include non-empty model lists
+                result[model_type.value] = models
+        return result
