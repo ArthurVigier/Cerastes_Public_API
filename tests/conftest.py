@@ -6,6 +6,15 @@ import pytest
 import os
 import requests
 import time
+import sys
+from pathlib import Path
+
+# Ajouter le répertoire racine du projet au PYTHONPATH
+# Cette ligne résout le problème d'importation des modules
+project_root = Path(__file__).parent.parent.absolute()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+    print(f"Ajout du chemin racine au sys.path: {project_root}")
 
 # URL de base de l'API (ajuster selon l'environnement)
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
