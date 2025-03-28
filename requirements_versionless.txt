@@ -75,7 +75,8 @@ black
 isort
 mypy
 flake8
-
+resemblyzer 
+pydub
 # Monitoring
 prometheus-client
 langdetect
