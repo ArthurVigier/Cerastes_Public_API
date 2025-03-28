@@ -493,16 +493,59 @@ async def run_inference(task_id: str, task_type: str, params: Dict[str, Any]) ->
         
         # Specific logic based on task type
         if task_type == "text":
-            # Existing text inference code...
-            # [Code existant]
+            # Extract parameters
+            user_input = params.get("input", "")
+            model_name = params.get("model")
+            prompt_name = params.get("prompt_name", "system_1")
+            max_tokens = params.get("max_tokens")
+            temperature = params.get("temperature")
+            
+            # Execute inference with prompt manager
+            result = await run_inference_with_prompt_manager(
+                task_id=task_id,
+                user_input=user_input,
+                prompt_name=prompt_name,
+                model_name=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
             
         elif task_type == "image":
-            # Existing image generation code...
-            # [Code existant]
+            # Image generation processing with formatted prompt
+            prompt_text = params.get("prompt", "")
+            model_name = params.get("model")
+            
+            # Use prompt manager for formatting
+            if "image_generation" in system_prompts:
+                formatted_prompt = prompt_manager.format_prompt_direct(
+                    system_prompts["image_generation"],
+                    text=prompt_text
+                )
+            else:
+                # Fallback to simple prompt
+                formatted_prompt = prompt_manager.format_prompt_direct(
+                    "Generate an image of: {text}",
+                    text=prompt_text
+                )
+            
+            # Image generation logic
+            # (to be implemented as needed)
+            result = {
+                "prompt": formatted_prompt,
+                "status": "not_implemented"
+            }
             
         elif task_type == "embedding":
-            # Existing embedding code...
-            # [Code existant]
+            # Embedding processing with formatted prompt
+            text = params.get("text", "")
+            model_name = params.get("model")
+            
+            # Use text directly for embedding
+            # Embeddings typically don't need system prompts
+            result = {
+                "text": text,
+                "status": "not_implemented"
+            }
             
         elif task_type == "chain":
             # Chain inference with sequenced prompts
@@ -523,7 +566,7 @@ async def run_inference(task_id: str, task_type: str, params: Dict[str, Any]) ->
             )
             
         elif task_type == "system_final":
-            # New system_final inference type
+            # System final inference with task dependencies
             task_dependencies = params.get("task_dependencies", {})
             model = params.get("model")
             max_tokens = params.get("max_tokens", 1024)
@@ -538,10 +581,54 @@ async def run_inference(task_id: str, task_type: str, params: Dict[str, Any]) ->
                 temperature=temperature
             )
             
+        elif task_type == "batch":
+            # Batch processing with formatted prompts
+            inputs = params.get("inputs", [])
+            model_name = params.get("model")
+            prompt_name = params.get("prompt_name", "system_1")
+            
+            # Process each input with prompt manager
+            batch_results = []
+            for i, input_text in enumerate(inputs):
+                # Update progress
+                progress = (i / len(inputs)) * 100
+                update_progress(task_id, progress, f"Processing input {i+1}/{len(inputs)}")
+                
+                # Execute inference for this input
+                try:
+                    text_inference = TextInference()
+                    response = text_inference.generate(
+                        prompt_name=prompt_name,
+                        input_text=input_text,
+                        model_name=model_name
+                    )
+                    batch_results.append({
+                        "input": input_text,
+                        "output": response,
+                        "status": "success"
+                    })
+                except Exception as e:
+                    batch_results.append({
+                        "input": input_text,
+                        "error": str(e),
+                        "status": "error"
+                    })
+            
+            result = {
+                "batch_results": batch_results,
+                "total": len(inputs),
+                "successful": sum(1 for r in batch_results if r.get("status") == "success")
+            }
+            
         else:
-            raise ValueError(f"Unsupported task type: {task_type}")
+            raise ValueError(f"Type de tâche non pris en charge: {task_type}")
         
-        # Final status update is handled by the specific task runners
+        # Final status update
+        update_task(task_id, {
+            "status": "completed",
+            "results": result,
+            "message": "Inference completed successfully"
+        })
         
     except Exception as e:
         logger.error(f"Error during inference for task {task_id}: {str(e)}")
