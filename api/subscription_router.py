@@ -5,40 +5,40 @@ import stripe
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
-# Modèles de données
+# Data models
 from .response_models import SuccessResponse, ErrorResponse
 from .error_handlers import APIError
 
-# Configuration du logging
+# Logging configuration
 logger = logging.getLogger("cerastes.api.subscription")
 
-# Création du router
+# Router creation
 subscription_router = APIRouter(tags=["subscription"])
 
-# Configuration Stripe
+# Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
-# Produits et prix
+# Products and prices
 SUBSCRIPTION_PRODUCTS = {
     'basic': {
-        'name': 'Abonnement Basic',
+        'name': 'Basic Subscription',
         'price_id': os.environ.get('STRIPE_BASIC_PRICE_ID', ''),
-        'features': ['Transcription audio', 'Analyse vidéo basique']
+        'features': ['Audio transcription', 'Basic video analysis']
     },
     'pro': {
-        'name': 'Abonnement Pro',
+        'name': 'Pro Subscription',
         'price_id': os.environ.get('STRIPE_PRO_PRICE_ID', ''),
-        'features': ['Transcription audio avec diarisation', 'Analyse vidéo avancée', 'Analyse non-verbale']
+        'features': ['Audio transcription with diarization', 'Advanced video analysis', 'Nonverbal analysis']
     },
     'enterprise': {
-        'name': 'Abonnement Enterprise',
+        'name': 'Enterprise Subscription',
         'price_id': os.environ.get('STRIPE_ENTERPRISE_PRICE_ID', ''),
-        'features': ['Fonctionnalités Pro', 'API dédiée', 'Support prioritaire', 'Volume illimité']
+        'features': ['All Pro features', 'Dedicated API', 'Priority support', 'Unlimited volume']
     }
 }
 
-# Modèles Pydantic
+# Pydantic models
 class CheckoutSessionRequest(BaseModel):
     plan: str
     email: Optional[str] = None
@@ -51,7 +51,7 @@ class CustomerPortalRequest(BaseModel):
 
 @subscription_router.get('/plans')
 async def get_subscription_plans():
-    """Récupère la liste des plans d'abonnement disponibles"""
+    """Retrieves the list of available subscription plans"""
     try:
         return {
             "success": True,
@@ -59,22 +59,22 @@ async def get_subscription_plans():
         }
         
     except Exception as e:
-        logger.error(f"Erreur lors de la récupération des plans: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des plans: {str(e)}")
+        logger.error(f"Error retrieving plans: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving plans: {str(e)}")
 
 @subscription_router.post('/create-checkout-session')
 async def create_checkout_session(request: CheckoutSessionRequest, req: Request):
-    """Crée une session de paiement Stripe pour un abonnement"""
+    """Creates a Stripe payment session for a subscription"""
     if request.plan not in SUBSCRIPTION_PRODUCTS:
-        raise HTTPException(status_code=400, detail=f"Plan d'abonnement '{request.plan}' non valide")
+        raise HTTPException(status_code=400, detail=f"Invalid subscription plan: '{request.plan}'")
     
     try:
-        # URL de redirection après paiement
+        # Redirection URL after payment
         host_url = str(req.base_url)
         success_url = request.success_url or f"{host_url}payment/success"
         cancel_url = request.cancel_url or f"{host_url}payment/cancel"
         
-        # Créer la session de paiement
+        # Create payment session
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[
@@ -96,12 +96,12 @@ async def create_checkout_session(request: CheckoutSessionRequest, req: Request)
         }
         
     except Exception as e:
-        logger.error(f"Erreur lors de la création de la session de paiement: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la création de la session de paiement: {str(e)}")
+        logger.error(f"Error creating payment session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating payment session: {str(e)}")
 
 @subscription_router.post('/webhook')
 async def webhook(request: Request, response: Response):
-    """Webhook pour recevoir les événements Stripe"""
+    """Webhook to receive Stripe events"""
     payload = await request.body()
     sig_header = request.headers.get('Stripe-Signature')
     
@@ -111,47 +111,47 @@ async def webhook(request: Request, response: Response):
         )
         
     except ValueError:
-        logger.error("Payload invalide")
+        logger.error("Invalid payload")
         response.status_code = 400
-        return {"error": "Payload invalide", "status_code": 400}
+        return {"error": "Invalid payload", "status_code": 400}
         
     except stripe.error.SignatureVerificationError:
-        logger.error("Signature invalide")
+        logger.error("Invalid signature")
         response.status_code = 400
-        return {"error": "Signature invalide", "status_code": 400}
+        return {"error": "Invalid signature", "status_code": 400}
     
-    # Gérer les événements
+    # Handle events
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        # Traiter la session complétée (par exemple, activer l'abonnement)
-        logger.info(f"Session de paiement complétée: {session.id}")
+        # Process completed session (e.g., activate subscription)
+        logger.info(f"Payment session completed: {session.id}")
         
     elif event['type'] == 'customer.subscription.created':
         subscription = event['data']['object']
-        # Traiter la création d'abonnement
-        logger.info(f"Abonnement créé: {subscription.id}")
+        # Process subscription creation
+        logger.info(f"Subscription created: {subscription.id}")
         
     elif event['type'] == 'customer.subscription.updated':
         subscription = event['data']['object']
-        # Traiter la mise à jour d'abonnement
-        logger.info(f"Abonnement mis à jour: {subscription.id}")
+        # Process subscription update
+        logger.info(f"Subscription updated: {subscription.id}")
         
     elif event['type'] == 'customer.subscription.deleted':
         subscription = event['data']['object']
-        # Traiter la suppression d'abonnement
-        logger.info(f"Abonnement supprimé: {subscription.id}")
+        # Process subscription deletion
+        logger.info(f"Subscription deleted: {subscription.id}")
     
     return {"success": True}
 
 @subscription_router.post('/customer-portal')
 async def customer_portal(request: CustomerPortalRequest, req: Request):
-    """Crée une session de portail client Stripe"""
+    """Creates a Stripe customer portal session"""
     try:
-        # URL de retour
+        # Return URL
         host_url = str(req.base_url)
         return_url = request.return_url or host_url
         
-        # Créer la session de portail
+        # Create portal session
         portal_session = stripe.billing_portal.Session.create(
             customer=request.customer_id,
             return_url=return_url
@@ -163,5 +163,5 @@ async def customer_portal(request: CustomerPortalRequest, req: Request):
         }
         
     except Exception as e:
-        logger.error(f"Erreur lors de la création de la session de portail: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la création de la session de portail: {str(e)}")
+        logger.error(f"Error creating portal session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating portal session: {str(e)}")
