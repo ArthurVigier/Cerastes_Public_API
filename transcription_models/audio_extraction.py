@@ -10,7 +10,7 @@ import traceback
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Optional, Callable, Union
-from moviepy.editor import AudioFileClip
+from moviepy import AudioFileClip
 MOVIEPY_AVAILABLE = True
 # Logging configuration
 logger = logging.getLogger("transcription.audio_extraction")
