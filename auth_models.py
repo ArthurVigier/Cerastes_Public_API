@@ -20,6 +20,16 @@ class UsageLimit(BaseModel):
     max_concurrent_requests: int = Field(..., description="Nombre maximum de requêtes simultanées")
     advanced_models: bool = Field(..., description="Accès aux modèles avancés")
 
+# Ajoutez cette classe après la définition de User et UserCreate
+class UserInDB(User):
+    """Modèle utilisateur pour la base de données avec mot de passe haché."""
+    hashed_password: str
+    is_active: bool = True
+    is_admin: bool = False  
+    subscription_level: str = "free"
+    last_login: Optional[datetime] = None
+    stripe_customer_id: Optional[str] = None
+    
 class ApiKey(BaseModel):
     """Modèle pour les clés API"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="ID unique de la clé API")
