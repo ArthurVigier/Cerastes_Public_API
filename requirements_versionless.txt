@@ -45,13 +45,11 @@ optimum
 deepspeed; platform_system != "Darwin"
 einops  # Modifié pour être compatible avec pyannote-audio 2.1.1
 
-# NLP
-spacy
+#
 sentence-transformers
 scikit-learn
 
-# Modèles spécifiques
-fr-core-news-sm@ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.6.0/fr_core_news_sm-3.6.0-py3-none-any.whl
+
 
 # Utilitaires
 pyyaml
