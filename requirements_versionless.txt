@@ -38,7 +38,6 @@ tokenizers
 jinja2
 
 # IA - Services
-pyannote.audio  # Version antérieure plus stable
 vllm==0.7.3; platform_system != "Darwin" or platform_machine != "arm64"
 librosa
 datasets
