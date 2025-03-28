@@ -1,0 +1,83 @@
+# API et serveur
+fastapi
+uvicorn
+pydantic
+python-multipart
+email-validator
+
+# Base de données
+sqlalchemy
+alembic
+psycopg2-binary
+
+# Authentification et sécurité
+python-jose
+passlib
+bcrypt
+pyjwt
+
+# Outils de base - Ajusté pour la compatibilité
+numpy  # Version compatible avec vllm et autres dépendances
+pandas  # Version compatible avec numpy 1.26.4
+tenacity
+psutil
+pillow # Version ajustée pour compatibilité
+
+# Traitement video et audio
+opencv-python  # Version compatible avec numpy 1.26.4
+ffmpeg-python
+imageio  # Version compatible avec numpy 1.26.4
+moviepy  # Version qui ne requiert pas numpy>=1.25.0
+
+# IA - Core
+torch  # Version stable et compatible
+transformers==4.49.0
+accelerate
+huggingface-hub
+tokenizers
+jinja2
+
+# IA - Services
+pyannote.audio  # Version antérieure plus stable
+vllm==0.7.3; platform_system != "Darwin" or platform_machine != "arm64"
+librosa
+datasets
+optimum
+deepspeed; platform_system != "Darwin"
+einops  # Modifié pour être compatible avec pyannote-audio 2.1.1
+
+# NLP
+spacy
+sentence-transformers
+scikit-learn
+
+# Modèles spécifiques
+fr-core-news-sm@ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.6.0/fr_core_news_sm-3.6.0-py3-none-any.whl
+
+# Utilitaires
+pyyaml
+aiofiles
+async-timeout
+tqdm
+retry
+colorama
+python-dotenv
+pymongo
+httpx
+
+# Paiements
+stripe
+
+# Tests et développement
+pytest
+pytest-asyncio
+black
+isort
+mypy
+flake8
+
+# Monitoring
+prometheus-client
+langdetect
+sacremoses
+sentencepiece
