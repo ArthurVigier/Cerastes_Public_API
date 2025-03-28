@@ -10,17 +10,12 @@ import traceback
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Optional, Callable, Union
-
+from moviepy.editor import AudioFileClip
+MOVIEPY_AVAILABLE = True
 # Logging configuration
 logger = logging.getLogger("transcription.audio_extraction")
 
-# Check optional dependencies
-try:
-    from moviepy.editor import AudioFileClip
-    MOVIEPY_AVAILABLE = True
-except ImportError:
-    MOVIEPY_AVAILABLE = False
-    logger.warning("MoviePy not available. Audio conversion will be disabled.")
+
 
 # Path configuration
 AUDIO_TMP_DIR = Path("uploads/audio")
