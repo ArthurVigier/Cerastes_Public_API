@@ -8,6 +8,7 @@ import os
 import gc
 import logging
 import torch
+from enum import Enum  # Ajoutez cette ligne
 from typing import Dict, Any, Optional, Tuple
 
 logger = logging.getLogger("model_manager")
@@ -22,7 +23,7 @@ class ModelType(str, Enum):
     INTERNVIDEO = "internvideo"
     DEEPSEEK = "deepseek"
     DIARIZATION = "diarization"
-    
+
 class ModelManager:
     """AI model manager with singleton pattern"""
     
