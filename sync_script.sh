@@ -37,7 +37,8 @@ echo "✅ Push to Codeberg completed."
 # Push to Radicle
 
 echo "🚀 Pushing to Radicle..."
-rad push
+rad sync
+
 
 echo "✅ Push to Radicle completed."
 
