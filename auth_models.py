@@ -11,18 +11,49 @@ class ApiKeyLevel(str, Enum):
     ENTERPRISE = "enterprise"
 
 class UsageLimit(BaseModel):
-    """Limites d'utilisation pour différents niveaux d'API"""
-    daily_requests: int = Field(..., description="Nombre maximum de requêtes par jour")
-    monthly_requests: int = Field(..., description="Nombre maximum de requêtes par mois")
-    max_tokens_per_request: int = Field(..., description="Nombre maximum de tokens par requête")
-    max_text_length: int = Field(..., description="Longueur maximale du texte en caractères")
-    batch_processing: bool = Field(..., description="Accès au traitement par lots")
-    max_concurrent_requests: int = Field(..., description="Nombre maximum de requêtes simultanées")
-    advanced_models: bool = Field(..., description="Accès aux modèles avancés")
+    """Usage limits for different API levels"""
+    daily_requests: int = Field(..., description="Maximum number of requests per day")
+    monthly_requests: int = Field(..., description="Maximum number of requests per month")
+    max_tokens_per_request: int = Field(..., description="Maximum number of tokens per request")
+    max_text_length: int = Field(..., description="Maximum text length in characters")
+    batch_processing: bool = Field(..., description="Access to batch processing")
+    max_concurrent_requests: int = Field(..., description="Maximum number of concurrent requests")
+    advanced_models: bool = Field(..., description="Access to advanced models")
 
-# Ajoutez cette classe après la définition de User et UserCreate
+# Define User before UserInDB
+class User(BaseModel):
+    """Model for users"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique user ID")
+    username: str = Field(..., description="Username")
+    email: EmailStr = Field(..., description="User email")
+    hashed_password: str = Field(..., description="Hashed password")
+    full_name: Optional[str] = Field(None, description="Full name")
+    disabled: bool = Field(default=False, description="Whether the account is disabled")
+    roles: List[str] = Field(default_factory=lambda: ["user"], description="User roles")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation date")
+    subscription: ApiKeyLevel = Field(default=ApiKeyLevel.FREE, description="Subscription level")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+class UserCreate(BaseModel):
+    """Model for user creation"""
+    username: str = Field(..., description="Username", min_length=3, max_length=50)
+    email: EmailStr = Field(..., description="User email")
+    password: str = Field(..., description="Password", min_length=8)
+    full_name: Optional[str] = Field(None, description="Full name")
+    
+    @validator('username')
+    def username_alphanumeric(cls, v):
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        return v
+
+# Now UserInDB can inherit from User
 class UserInDB(User):
-    """Modèle utilisateur pour la base de données avec mot de passe haché."""
+    """User model for database with hashed password."""
     hashed_password: str
     is_active: bool = True
     is_admin: bool = False  
@@ -31,17 +62,17 @@ class UserInDB(User):
     stripe_customer_id: Optional[str] = None
     
 class ApiKey(BaseModel):
-    """Modèle pour les clés API"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="ID unique de la clé API")
-    key: str = Field(..., description="Clé API (hachée dans la base de données)")
-    name: str = Field(..., description="Nom descriptif de la clé")
-    user_id: str = Field(..., description="ID de l'utilisateur propriétaire")
-    level: ApiKeyLevel = Field(default=ApiKeyLevel.FREE, description="Niveau d'accès")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Date de création")
-    last_used_at: Optional[datetime] = Field(None, description="Dernière utilisation")
-    expires_at: Optional[datetime] = Field(None, description="Date d'expiration")
-    is_active: bool = Field(default=True, description="Si la clé est active")
-    usage: Dict[str, int] = Field(default_factory=dict, description="Statistiques d'utilisation")
+    """Model for API keys"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique API key ID")
+    key: str = Field(..., description="API key (hashed in the database)")
+    name: str = Field(..., description="Descriptive name for the key")
+    user_id: str = Field(..., description="ID of the user who owns the key")
+    level: ApiKeyLevel = Field(default=ApiKeyLevel.FREE, description="Access level")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation date")
+    last_used_at: Optional[datetime] = Field(None, description="Last used date")
+    expires_at: Optional[datetime] = Field(None, description="Expiration date")
+    is_active: bool = Field(default=True, description="Whether the key is active")
+    usage: Dict[str, int] = Field(default_factory=dict, description="Usage statistics")
     
     class Config:
         json_encoders = {
@@ -49,46 +80,16 @@ class ApiKey(BaseModel):
         }
 
 class TokenData(BaseModel):
-    """Données contenues dans le token JWT"""
-    sub: str = Field(..., description="ID de l'utilisateur")
-    name: Optional[str] = Field(None, description="Nom de l'utilisateur")
-    email: Optional[str] = Field(None, description="Email de l'utilisateur")
-    roles: List[str] = Field(default_factory=list, description="Rôles de l'utilisateur")
-    api_level: ApiKeyLevel = Field(default=ApiKeyLevel.FREE, description="Niveau d'API")
-    exp: Optional[int] = Field(None, description="Expiration du token (timestamp)")
-
-class User(BaseModel):
-    """Modèle pour les utilisateurs"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="ID unique de l'utilisateur")
-    username: str = Field(..., description="Nom d'utilisateur")
-    email: EmailStr = Field(..., description="Email de l'utilisateur")
-    hashed_password: str = Field(..., description="Mot de passe haché")
-    full_name: Optional[str] = Field(None, description="Nom complet")
-    disabled: bool = Field(default=False, description="Si le compte est désactivé")
-    roles: List[str] = Field(default_factory=lambda: ["user"], description="Rôles de l'utilisateur")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Date de création")
-    subscription: ApiKeyLevel = Field(default=ApiKeyLevel.FREE, description="Niveau d'abonnement")
-    
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
-class UserCreate(BaseModel):
-    """Modèle pour la création d'utilisateurs"""
-    username: str = Field(..., description="Nom d'utilisateur", min_length=3, max_length=50)
-    email: EmailStr = Field(..., description="Email de l'utilisateur")
-    password: str = Field(..., description="Mot de passe", min_length=8)
-    full_name: Optional[str] = Field(None, description="Nom complet")
-    
-    @validator('username')
-    def username_alphanumeric(cls, v):
-        if not v.isalnum():
-            raise ValueError('Le nom d\'utilisateur doit être alphanumérique')
-        return v
+    """Data contained in the JWT token"""
+    sub: str = Field(..., description="User ID")
+    name: Optional[str] = Field(None, description="User name")
+    email: Optional[str] = Field(None, description="User email")
+    roles: List[str] = Field(default_factory=list, description="User roles")
+    api_level: ApiKeyLevel = Field(default=ApiKeyLevel.FREE, description="API level")
+    exp: Optional[int] = Field(None, description="Token expiration (timestamp)")
 
 class UserResponse(BaseModel):
-    """Modèle pour la réponse utilisateur (sans données sensibles)"""
+    """Model for user response (without sensitive data)"""
     id: str
     username: str
     email: EmailStr
@@ -103,20 +104,20 @@ class UserResponse(BaseModel):
         }
 
 class Token(BaseModel):
-    """Modèle pour le token d'authentification"""
+    """Model for authentication token"""
     access_token: str
     token_type: str = "bearer"
     expires_at: int
     user: UserResponse
 
 class ApiKeyCreate(BaseModel):
-    """Modèle pour la création d'une clé API"""
-    name: str = Field(..., description="Nom descriptif de la clé", min_length=3, max_length=50)
-    level: Optional[ApiKeyLevel] = Field(None, description="Niveau d'accès (admin only)")
-    expires_at: Optional[datetime] = Field(None, description="Date d'expiration (optionnel)")
+    """Model for API key creation"""
+    name: str = Field(..., description="Descriptive name for the key", min_length=3, max_length=50)
+    level: Optional[ApiKeyLevel] = Field(None, description="Access level (admin only)")
+    expires_at: Optional[datetime] = Field(None, description="Expiration date (optional)")
 
 class ApiKeyResponse(BaseModel):
-    """Modèle pour la réponse de clé API"""
+    """Model for API key response"""
     id: str
     key: str
     name: str
@@ -131,7 +132,7 @@ class ApiKeyResponse(BaseModel):
         }
 
 class UsageRecord(BaseModel):
-    """Modèle pour l'enregistrement d'utilisation"""
+    """Model for usage recording"""
     user_id: str
     api_key_id: str
     request_path: str
