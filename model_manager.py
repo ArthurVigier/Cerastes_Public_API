@@ -12,6 +12,17 @@ from typing import Dict, Any, Optional, Tuple
 
 logger = logging.getLogger("model_manager")
 
+# Configuration du logging
+logger = logging.getLogger("model_manager")
+
+# Énumération des types de modèles supportés
+class ModelType(str, Enum):
+    """Types de modèles supportés par le gestionnaire"""
+    WHISPER = "whisper"
+    INTERNVIDEO = "internvideo"
+    DEEPSEEK = "deepseek"
+    DIARIZATION = "diarization"
+    
 class ModelManager:
     """AI model manager with singleton pattern"""
     
