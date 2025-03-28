@@ -9,18 +9,12 @@ import gc
 import logging
 import traceback
 from typing import Dict, Any, Optional, Callable, Union
-
+import torch
+import whisper
 # Logging
 logger = logging.getLogger("transcription.whisper")
+WHISPER_AVAILABLE = True
 
-# Check dependencies
-try:
-    import whisper
-    import torch
-    WHISPER_AVAILABLE = True
-except ImportError:
-    WHISPER_AVAILABLE = False
-    logger.warning("Whisper is not available. Transcription will be disabled.")
 
 # Global model for reuse
 whisper_model = None
