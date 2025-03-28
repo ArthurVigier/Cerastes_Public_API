@@ -24,6 +24,9 @@ def get_db() -> Session:
     finally:
         db.close()
 
+# Add this alias for compatibility with auth_router.py
+get_db_connection = get_db
+
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
     """Retrieves a user by username."""
     return db.query(User).filter(User.username == username).first()
