@@ -21,7 +21,7 @@ numpy==2.2.4
 pandas==2.2.3
 tenacity==9.0.0
 psutil==5.9.6
-pillow==11.1.0
+pillow==10.2.0
 matplotlib==3.10.1
 
 # Traitement video et audio
