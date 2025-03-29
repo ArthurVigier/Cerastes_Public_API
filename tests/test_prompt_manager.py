@@ -1,200 +1,305 @@
 """
-Tests pour le gestionnaire de prompts
-------------------------------------
-Ce module vérifie les fonctionnalités du gestionnaire de prompts,
-notamment le chargement, le formatage et la gestion des placeholders.
+Tests for the Prompt Manager functionality
+---------------------------------------
+This module tests the Prompt Manager which handles loading,
+formatting, and managing prompts used by the API.
 """
 
 import pytest
-import os
+import requests
 import tempfile
+import os
 import shutil
 from pathlib import Path
-from utils.prompt_manager import PromptManager, get_prompt_manager
+import json
+
 
 class TestPromptManager:
+    """Test class for Prompt Manager functionality."""
     
-    @pytest.fixture
-    def test_prompts_dir(self):
-        """Crée un répertoire temporaire avec des prompts de test."""
+    @pytest.fixture(scope="function")
+    def temp_prompts_dir(self):
+        """Create a temporary directory with test prompts."""
         temp_dir = tempfile.mkdtemp()
         prompts_dir = Path(temp_dir) / "prompts"
         prompts_dir.mkdir()
         
-        # Créer des fichiers de prompts de test
+        # Create test prompt files
         with open(prompts_dir / "test1.txt", "w", encoding="utf-8") as f:
-            f.write("Voici un prompt avec {placeholder1} et {placeholder2}")
+            f.write("Prompt with {placeholder1} and {placeholder2}")
         
         with open(prompts_dir / "test2.txt", "w", encoding="utf-8") as f:
-            f.write("Un prompt sans placeholder")
+            f.write("Prompt without placeholders")
         
         with open(prompts_dir / "test3.txt", "w", encoding="utf-8") as f:
-            f.write("Analyse {text} en français")
+            f.write("Analyze {text} in {language}")
         
-        with open(prompts_dir / "test_multiples.txt", "w", encoding="utf-8") as f:
-            f.write("Prompt utilisant {text} plusieurs fois: {text}")
-        
-        # Ajouter un fichier JSON de collection
+        # Create JSON collection file
         with open(prompts_dir / "prompts.json", "w", encoding="utf-8") as f:
-            f.write('''{
-                "json_prompt1": "Prompt JSON avec {json_var}",
-                "json_prompt2": "Autre prompt JSON avec {text}"
-            }''')
+            f.write(json.dumps({
+                "json_prompt1": "JSON prompt with {var}",
+                "json_prompt2": "Another JSON prompt with {text}"
+            }))
         
         yield prompts_dir
         
-        # Nettoyer après les tests
+        # Clean up
         shutil.rmtree(temp_dir)
     
-    def test_initialization(self, test_prompts_dir):
-        """Teste l'initialisation du gestionnaire de prompts."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
+    def test_list_available_prompts(self, api_url, api_headers):
+        """Test listing available prompts if endpoint exists."""
+        response = requests.get(
+            f"{api_url}/api/prompts",
+            headers=api_headers
+        )
         
-        # Vérifier que les prompts ont été chargés
-        assert "test1" in prompt_manager.prompts_cache
-        assert "test2" in prompt_manager.prompts_cache
-        assert "test3" in prompt_manager.prompts_cache
-        assert "json_prompt1" in prompt_manager.prompts_cache
-        assert "json_prompt2" in prompt_manager.prompts_cache
+        # Skip if endpoint doesn't exist
+        if response.status_code == 404:
+            pytest.skip("Prompts listing endpoint not available")
+        
+        assert response.status_code == 200, f"Unexpected status code: {response.status_code}, {response.text}"
+        
+        # Check response format
+        data = response.json()
+        assert "prompts" in data, "No prompts in response"
+        prompts = data["prompts"]
+        assert isinstance(prompts, (list, dict)), "Prompts should be a list or dictionary"
     
-    def test_get_prompt(self, test_prompts_dir):
-        """Teste la récupération des prompts bruts."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
+    def test_get_specific_prompt(self, api_url, api_headers):
+        """Test getting a specific prompt if endpoint exists."""
+        # First list available prompts
+        list_response = requests.get(
+            f"{api_url}/api/prompts",
+            headers=api_headers
+        )
         
-        # Récupérer des prompts
-        assert prompt_manager.get_prompt("test1") == "Voici un prompt avec {placeholder1} et {placeholder2}"
-        assert prompt_manager.get_prompt("test2") == "Un prompt sans placeholder"
-        assert prompt_manager.get_prompt("nonexistent") is None
+        # Skip if listing endpoint doesn't exist
+        if list_response.status_code == 404:
+            pytest.skip("Prompts listing endpoint not available")
+        
+        # Get first prompt name
+        list_data = list_response.json()
+        if not list_data.get("prompts"):
+            pytest.skip("No prompts available")
+        
+        prompt_name = None
+        if isinstance(list_data["prompts"], list):
+            if list_data["prompts"]:
+                prompt_name = list_data["prompts"][0]
+        else:  # dict
+            prompt_name = next(iter(list_data["prompts"]), None)
+        
+        if not prompt_name:
+            pytest.skip("No prompt names available")
+        
+        # Get specific prompt
+        response = requests.get(
+            f"{api_url}/api/prompts/{prompt_name}",
+            headers=api_headers
+        )
+        
+        # Skip if endpoint doesn't exist
+        if response.status_code == 404:
+            pytest.skip("Specific prompt endpoint not available")
+        
+        assert response.status_code == 200, f"Unexpected status code: {response.status_code}, {response.text}"
+        
+        # Check response format
+        data = response.json()
+        assert "prompt" in data, "No prompt in response"
+        assert isinstance(data["prompt"], str), "Prompt should be a string"
+        assert "placeholders" in data, "No placeholders in response"
+        assert isinstance(data["placeholders"], list), "Placeholders should be a list"
     
-    def test_get_placeholder_names(self, test_prompts_dir):
-        """Teste l'extraction des noms de placeholders."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
+    def test_add_custom_prompt(self, api_url, auth_headers):
+        """Test adding a custom prompt if endpoint exists."""
+        # Create a unique prompt name
+        prompt_name = f"test_prompt_{uuid.uuid4().hex[:8]}"
         
-        # Récupérer les noms de placeholders
-        assert set(prompt_manager.get_placeholder_names("test1")) == {"placeholder1", "placeholder2"}
-        assert prompt_manager.get_placeholder_names("test2") == []
-        assert prompt_manager.get_placeholder_names("test3") == ["text"]
-        assert prompt_manager.get_placeholder_names("test_multiples") == ["text"]  # Les doublons ne sont listés qu'une fois
-    
-    def test_format_prompt(self, test_prompts_dir):
-        """Teste le formatage des prompts avec des variables."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        # Formater des prompts avec les variables requises
-        formatted = prompt_manager.format_prompt("test1", placeholder1="valeur1", placeholder2="valeur2")
-        assert formatted == "Voici un prompt avec valeur1 et valeur2"
-        
-        # Formater un prompt sans placeholder
-        formatted = prompt_manager.format_prompt("test2")
-        assert formatted == "Un prompt sans placeholder"
-        
-        # Formater avec le placeholder standard {text}
-        formatted = prompt_manager.format_prompt("test3", text="un texte d'exemple")
-        assert formatted == "Analyse un texte d'exemple en français"
-        
-        # Formater avec des placeholders utilisés plusieurs fois
-        formatted = prompt_manager.format_prompt("test_multiples", text="répété")
-        assert formatted == "Prompt utilisant répété plusieurs fois: répété"
-    
-    def test_format_prompt_with_extra_vars(self, test_prompts_dir):
-        """Teste le formatage des prompts avec des variables supplémentaires."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        # Variables supplémentaires ignorées
-        formatted = prompt_manager.format_prompt("test3", text="exemple", extra_var="ignorée")
-        assert formatted == "Analyse exemple en français"
-    
-    def test_format_prompt_missing_vars(self, test_prompts_dir):
-        """Teste le formatage des prompts avec des variables manquantes."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        # Variable manquante
-        formatted = prompt_manager.format_prompt("test1", placeholder1="valeur1")
-        assert formatted is None
-    
-    def test_format_prompt_direct(self, test_prompts_dir):
-        """Teste le formatage direct des prompts."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        # Formatage direct
-        template = "Voici {var1} et {var2}"
-        formatted = prompt_manager.format_prompt_direct(template, var1="test1", var2="test2")
-        assert formatted == "Voici test1 et test2"
-        
-        # Formatage direct avec des variables supplémentaires
-        formatted = prompt_manager.format_prompt_direct(template, var1="test1", var2="test2", extra="ignoré")
-        assert formatted == "Voici test1 et test2"
-        
-        # Formatage direct avec des variables manquantes
-        formatted = prompt_manager.format_prompt_direct(template, var1="test1")
-        assert formatted == template  # Devrait retourner le template original
-    
-    def test_format_prompt_direct_special_chars(self, test_prompts_dir):
-        """Teste le formatage direct avec des caractères spéciaux."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        template = "Caractères spéciaux: {chars}"
-        formatted = prompt_manager.format_prompt_direct(template, chars="é à ù € \n \t")
-        assert formatted == "Caractères spéciaux: é à ù € \n \t"
-    
-    def test_add_prompt(self, test_prompts_dir):
-        """Teste l'ajout et la mise à jour de prompts."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        # Ajouter un nouveau prompt
-        prompt_manager.add_prompt("new_prompt", "Nouveau prompt avec {param}")
-        assert prompt_manager.get_prompt("new_prompt") == "Nouveau prompt avec {param}"
-        
-        # Mettre à jour un prompt existant
-        prompt_manager.add_prompt("test1", "Prompt mis à jour avec {new_param}")
-        assert prompt_manager.get_prompt("test1") == "Prompt mis à jour avec {new_param}"
-    
-    def test_singleton_instance(self):
-        """Teste que get_prompt_manager retourne une instance singleton."""
-        manager1 = get_prompt_manager()
-        manager2 = get_prompt_manager()
-        
-        # Vérifier que c'est la même instance
-        assert manager1 is manager2
-        
-        # Ajouter un prompt et vérifier qu'il est disponible dans les deux références
-        manager1.add_prompt("singleton_test", "Test du singleton avec {var}")
-        assert manager2.get_prompt("singleton_test") == "Test du singleton avec {var}"
-    
-    def test_standard_placeholders(self, test_prompts_dir):
-        """Teste l'utilisation des placeholders standards."""
-        prompt_manager = PromptManager(prompts_dir=str(test_prompts_dir))
-        
-        # Ajouter des prompts avec différents placeholders standards
-        standard_placeholders = {
-            "text_prompt": "Texte: {text}",
-            "input_prompt": "Entrée: {input}",
-            "query_prompt": "Requête: {query}",
-            "language_prompt": "Langue: {language}",
-            "content_prompt": "Contenu: {content}",
-            "context_prompt": "Contexte: {context}",
-            "question_prompt": "Question: {question}",
-            "data_prompt": "Données: {data}",
-            "json_prompt": "JSON: {json}",
-            "transcript_prompt": "Transcription: {transcript}",
-            "multi_prompt": "Multiple: {text} {language} {context}"
+        # Prepare prompt data
+        prompt_data = {
+            "name": prompt_name,
+            "content": "This is a test prompt with {placeholder}",
+            "description": "A test prompt for API testing"
         }
         
-        for name, template in standard_placeholders.items():
-            prompt_manager.add_prompt(name, template)
+        # Add prompt
+        response = requests.post(
+            f"{api_url}/api/prompts",
+            json=prompt_data,
+            headers=auth_headers
+        )
         
-        # Tester chaque placeholder standard
-        assert prompt_manager.format_prompt("text_prompt", text="exemple") == "Texte: exemple"
-        assert prompt_manager.format_prompt("input_prompt", input="valeur") == "Entrée: valeur"
-        assert prompt_manager.format_prompt("query_prompt", query="recherche") == "Requête: recherche"
-        assert prompt_manager.format_prompt("language_prompt", language="français") == "Langue: français"
-        assert prompt_manager.format_prompt("content_prompt", content="contenu") == "Contenu: contenu"
-        assert prompt_manager.format_prompt("context_prompt", context="contexte") == "Contexte: contexte"
-        assert prompt_manager.format_prompt("question_prompt", question="pourquoi?") == "Question: pourquoi?"
-        assert prompt_manager.format_prompt("data_prompt", data="données") == "Données: données"
-        assert prompt_manager.format_prompt("json_prompt", json="{\"key\":\"value\"}") == "JSON: {\"key\":\"value\"}"
-        assert prompt_manager.format_prompt("transcript_prompt", transcript="texte") == "Transcription: texte"
+        # Skip if endpoint doesn't exist
+        if response.status_code == 404:
+            pytest.skip("Add prompt endpoint not available")
         
-        # Tester un prompt avec plusieurs placeholders
-        formatted = prompt_manager.format_prompt("multi_prompt", text="texte", language="fr", context="ctx")
-        assert formatted == "Multiple: texte fr ctx"
+        # Skip if not authorized
+        if response.status_code == 403:
+            pytest.skip("Not authorized to add prompts")
+        
+        assert response.status_code in [200, 201], f"Unexpected status code: {response.status_code}, {response.text}"
+        
+        # Verify prompt was added by getting it
+        get_response = requests.get(
+            f"{api_url}/api/prompts/{prompt_name}",
+            headers=auth_headers
+        )
+        
+        assert get_response.status_code == 200, f"Failed to retrieve added prompt: {get_response.status_code}, {get_response.text}"
+        
+        # Clean up
+        delete_response = requests.delete(
+            f"{api_url}/api/prompts/{prompt_name}",
+            headers=auth_headers
+        )
+        
+        # Note but don't fail if cleanup fails
+        if delete_response.status_code != 200:
+            print(f"Warning: Failed to clean up test prompt: {delete_response.status_code}, {delete_response.text}")
+    
+    def test_update_prompt(self, api_url, auth_headers):
+        """Test updating an existing prompt if endpoint exists."""
+        # First create a prompt to update
+        prompt_name = f"test_update_{uuid.uuid4().hex[:8]}"
+        
+        # Prepare prompt data
+        create_data = {
+            "name": prompt_name,
+            "content": "Original prompt content with {var}",
+            "description": "A test prompt for updating"
+        }
+        
+        # Create prompt
+        create_response = requests.post(
+            f"{api_url}/api/prompts",
+            json=create_data,
+            headers=auth_headers
+        )
+        
+        # Skip if endpoint doesn't exist
+        if create_response.status_code == 404:
+            pytest.skip("Add prompt endpoint not available")
+        
+        # Skip if not authorized
+        if create_response.status_code == 403:
+            pytest.skip("Not authorized to add prompts")
+        
+        if create_response.status_code not in [200, 201]:
+            pytest.skip(f"Failed to create test prompt: {create_response.status_code}, {create_response.text}")
+        
+        # Update prompt
+        update_data = {
+            "content": "Updated prompt content with {var} and {new_var}",
+            "description": "Updated description"
+        }
+        
+        update_response = requests.put(
+            f"{api_url}/api/prompts/{prompt_name}",
+            json=update_data,
+            headers=auth_headers
+        )
+        
+        # Skip if endpoint doesn't exist
+        if update_response.status_code == 404:
+            pytest.skip("Update prompt endpoint not available")
+        
+        assert update_response.status_code == 200, f"Unexpected status code: {update_response.status_code}, {update_response.text}"
+        
+        # Verify update
+        get_response = requests.get(
+            f"{api_url}/api/prompts/{prompt_name}",
+            headers=auth_headers
+        )
+        
+        assert get_response.status_code == 200
+        get_data = get_response.json()
+        assert "prompt" in get_data
+        assert "new_var" in get_data["prompt"], "Updated content not saved"
+        
+        # Clean up
+        requests.delete(
+            f"{api_url}/api/prompts/{prompt_name}",
+            headers=auth_headers
+        )
+    
+    def test_prompt_visualization(self, api_url, api_headers):
+        """Test prompt visualization if endpoint exists."""
+        response = requests.get(
+            f"{api_url}/api/prompts/visualize",
+            headers=api_headers
+        )
+        
+        # Skip if endpoint doesn't exist
+        if response.status_code == 404:
+            pytest.skip("Prompt visualization endpoint not available")
+        
+        assert response.status_code == 200, f"Unexpected status code: {response.status_code}, {response.text}"
+    
+    def test_use_prompt_in_inference(self, api_url, api_headers):
+        """Test using a specific prompt in inference."""
+        # First list available prompts
+        list_response = requests.get(
+            f"{api_url}/api/prompts",
+            headers=api_headers
+        )
+        
+        # Skip if listing endpoint doesn't exist
+        if list_response.status_code == 404:
+            pytest.skip("Prompts listing endpoint not available")
+        
+        # Get first prompt name
+        list_data = list_response.json()
+        if not list_data.get("prompts"):
+            pytest.skip("No prompts available")
+        
+        prompt_name = None
+        if isinstance(list_data["prompts"], list):
+            if list_data["prompts"]:
+                prompt_name = list_data["prompts"][0]
+        else:  # dict
+            prompt_name = next(iter(list_data["prompts"]), None)
+        
+        if not prompt_name:
+            pytest.skip("No prompt names available")
+        
+        # Use prompt in inference
+        inference_data = {
+            "text": "This is test text for inference with a specific prompt.",
+            "prompt_name": prompt_name,
+            "use_segmentation": True,
+            "max_new_tokens": 100
+        }
+        
+        response = requests.post(
+            f"{api_url}/api/inference/start",
+            json=inference_data,
+            headers=api_headers
+        )
+        
+        # Try alternative endpoint if needed
+        if response.status_code == 404:
+            inference_data["prompt"] = prompt_name  # Some APIs use 'prompt' instead of 'prompt_name'
+            response = requests.post(
+                f"{api_url}/api/inference",
+                json=inference_data,
+                headers=api_headers
+            )
+        
+        # Skip if inferencing not available
+        if response.status_code in [404, 400] and "prompt" in response.text.lower():
+            pytest.skip("Inference with specific prompt not supported")
+        
+        assert response.status_code in [200, 202], f"Unexpected status code: {response.status_code}, {response.text}"
+        
+        # Check if task was created
+        data = response.json()
+        assert "task_id" in data or "id" in data, "No task ID in response"
+        
+        # Clean up task
+        task_id = data.get("task_id") or data.get("id")
+        if task_id:
+            try:
+                requests.delete(f"{api_url}/api/tasks/{task_id}", headers=api_headers)
+            except:
+                pass

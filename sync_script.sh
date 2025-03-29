@@ -39,7 +39,6 @@ echo "✅ Push to Codeberg completed."
 echo "🚀 Pushing to Radicle..."
 rad sync
 
-
 echo "✅ Push to Radicle completed."
 
 echo "🎉 Synchronization complete!"

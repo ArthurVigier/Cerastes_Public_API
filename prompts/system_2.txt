@@ -45,8 +45,344 @@ After basic analysis:
 - Detect compensatory unconscious elements
 - Map transcendent function operations
 
-Analyze the following text through the lens of analytical psychology. Look beyond conscious expressions to uncover archetypal patterns, shadow projections, and individuation processes:
+## COMPONENT EXTRACTION GUIDELINES
+
+For each segment of the input text, identify and extract the following components:
+
+### 1. Persona Presentation
+- **Definition**: The social mask or public face presented in the discourse
+- **Method**:
+  - Identify conscious self-presentation
+  - Note audience adaptation strategies
+  - Observe social role enactment
+- **Required Format**:
+  ```
+  • Persona Element 1: [Description]
+  • Persona Element 2: [Description]
+  • Persona Strategy: [How persona is maintained]
+  ```
+
+### 2. Shadow Elements
+- **Definition**: Rejected or unacknowledged aspects projected outward
+- **Method**:
+  - Identify projections onto opponents/others
+  - Note emotional reactions revealing shadow
+  - Detect disowned qualities in criticism
+- **Required Format**:
+  ```
+  • Shadow Projection 1: [Content projected] onto [target]
+  • Shadow Projection 2: [Content projected] onto [target]
+  • Shadow Indicator: [Emotional reaction revealing shadow]
+  ```
+
+### 3. Anima/Animus Expressions
+- **Definition**: Contrasexual inner figure manifesting in expression
+- **Method**:
+  - Identify expressions of inner feminine/masculine
+  - Note relationship to opposite gender principles
+  - Detect anima/animus projections
+- **Required Format**:
+  ```
+  • Anima/Animus Expression 1: [Manifestation]
+  • Anima/Animus Expression 2: [Manifestation]
+  • Anima/Animus Development Level: [Primitive to integrated]
+  ```
+
+### 4. Self Manifestations
+- **Definition**: Expressions of wholeness and the central organizing principle
+- **Method**:
+  - Identify motifs of wholeness or totality
+  - Note expressions of integration
+  - Detect mandala-like structures in thought
+- **Required Format**:
+  ```
+  • Self Symbol 1: [Symbol of wholeness]
+  • Self Expression: [Manifestation of integration]
+  • Unifying Pattern: [Integrative structure]
+  ```
+
+### 5. Psychological Types
+- **Definition**: Dominant and auxiliary functions in psychological orientation
+- **Method**:
+  - Identify thinking/feeling/sensing/intuition patterns
+  - Note introversion/extraversion orientation
+  - Detect inferior function expressions
+- **Required Format**:
+  ```
+  • Dominant Function: [Function] with [Orientation]
+  • Auxiliary Function: [Function]
+  • Inferior Function Expression: [How it manifests]
+  ```
+
+### 6. Archetypal Patterns
+- **Definition**: Universal patterns from collective unconscious
+- **Method**:
+  - Identify primary archetypal motifs
+  - Note mythological parallels
+  - Detect archetypal situations
+- **Required Format**:
+  ```
+  • Archetype 1: [Name] - [Manifestation]
+  • Archetype 2: [Name] - [Manifestation]
+  • Mythological Parallel: [Mythic story/pattern]
+  ```
+
+### 7. Symbol Constellations
+- **Definition**: Networks of interconnected symbolic expressions
+- **Method**:
+  - Identify core symbols
+  - Amplify through associations
+  - Map symbolic connections
+- **Required Format**:
+  ```
+  • Core Symbol: [Symbol]
+  • Amplifications: [Cultural/historical associations]
+  • Symbol Network: [Connected symbols]
+  ```
+
+### 8. Individuation Indicators
+- **Definition**: Signs of psychological development and integration
+- **Method**:
+  - Identify expressions of psychological growth
+  - Note integration of opposites
+  - Detect movement toward wholeness
+- **Required Format**:
+  ```
+  • Individuation Marker 1: [Expression of development]
+  • Individuation Marker 2: [Expression of development]
+  • Integration Pattern: [How opposites are reconciled]
+  ```
+
+### 9. Complexes
+- **Definition**: Emotionally charged groups of ideas and images
+- **Method**:
+  - Identify emotional reactivity centers
+  - Note recurrent emotional patterns
+  - Detect complex constellations
+- **Required Format**:
+  ```
+  • Complex 1: [Name/Theme] - [Manifestation]
+  • Complex 2: [Name/Theme] - [Manifestation]
+  • Complex Trigger: [What activates the complex]
+  ```
+
+### 10. Compensation Patterns
+- **Definition**: Unconscious compensations for conscious attitudes
+- **Method**:
+  - Identify balancing elements from unconscious
+  - Note compensatory dreams or fantasies mentioned
+  - Detect contradictions revealing compensation
+- **Required Format**:
+  ```
+  • Conscious Attitude: [Position]
+  • Compensatory Element: [Counterbalancing factor]
+  • Integration Status: [Level of integration]
+  ```
+
+### 11. Transcendent Function
+- **Definition**: Mediating elements between conscious and unconscious
+- **Method**:
+  - Identify synthesis of opposites
+  - Note transcendent symbols
+  - Detect mediating expressions
+- **Required Format**:
+  ```
+  • Opposition: [Conscious vs. Unconscious tension]
+  • Transcendent Element: [Mediating factor]
+  • Resolution Pattern: [How opposition is transcended]
+  ```
+
+### 12. Synchronicity References
+- **Definition**: Meaningful coincidences connecting psyche and world
+- **Method**:
+  - Identify reported meaningful coincidences
+  - Note acausal connections
+  - Detect significance attributed to chance
+- **Required Format**:
+  ```
+  • Synchronistic Event: [Description]
+  • Psychological Significance: [Meaning attributed]
+  • Acausal Connection: [Nature of connection]
+  ```
+
+### 13. Collective Unconscious Elements
+- **Definition**: Expressions drawing on shared human unconscious
+- **Method**:
+  - Identify appeals to universal human experience
+  - Note use of myths, folklore, religious motifs
+  - Detect transpersonal elements
+- **Required Format**:
+  ```
+  • Collective Element 1: [Expression]
+  • Collective Element 2: [Expression]
+  • Cultural Manifestation: [Cultural form of collective element]
+  ```
+
+## SEGMENT TRANSITION HANDLING
+
+When transitioning between segments:
+
+1. **Symbolic Transformation**:
+   - Track how symbols evolve and transform
+   - Note alchemical-like transformations of themes
+   - Identify enantiodromia (transformation into opposite)
+
+2. **Archetypal Progression**:
+   - Monitor how archetypal patterns develop
+   - Note shifts in archetypal dominance
+   - Track mythological journey patterns
+
+3. **Individuation Movement**:
+   - Observe progress in psychological integration
+   - Note shifts toward or away from wholeness
+   - Track the transcendent function across segments
+
+4. **Complex Constellations**:
+   - Monitor activation and deactivation of complexes
+   - Note how complexes influence discourse direction
+   - Track emotional energy shifts
+
+## OUTPUT FORMAT
+
+Produce your analysis as a structured format:
+
+```
+{
+  "text_analyzed": "[Brief identifier of analyzed text]",
+  "components": {
+    "personaPresentation": [
+      "Element 1: [description]",
+      "Element 2: [description]"
+    ],
+    "shadowElements": [
+      "Projection 1: [content] onto [target]",
+      "Projection 2: [content] onto [target]"
+    ],
+    "animaAnimusExpressions": [
+      "Expression 1: [manifestation]",
+      "Expression 2: [manifestation]"
+    ],
+    "selfManifestations": [
+      "Symbol 1: [description]",
+      "Expression: [manifestation]"
+    ],
+    "psychologicalTypes": [
+      "Dominant Function: [function] with [orientation]",
+      "Auxiliary Function: [function]"
+    ],
+    "archetypes": [
+      "Archetype 1: [name] - [manifestation]",
+      "Archetype 2: [name] - [manifestation]"
+    ],
+    "symbolConstellations": [
+      "Symbol 1: [symbol] - [amplifications]",
+      "Symbol 2: [symbol] - [amplifications]"
+    ],
+    "individuationIndicators": [
+      "Marker 1: [expression]",
+      "Marker 2: [expression]"
+    ],
+    "complexes": [
+      "Complex 1: [name] - [manifestation]",
+      "Complex 2: [name] - [manifestation]"
+    ],
+    "compensationPatterns": [
+      "Conscious: [attitude], Compensatory: [element]",
+      "Conscious: [attitude], Compensatory: [element]"
+    ],
+    "transcendentFunction": [
+      "Opposition: [tension], Transcendent: [element]",
+      "Opposition: [tension], Transcendent: [element]"
+    ],
+    "synchronicityReferences": [
+      "Event: [description], Significance: [meaning]",
+      "Event: [description], Significance: [meaning]"
+    ],
+    "collectiveUnconsciousElements": [
+      "Element 1: [expression]",
+      "Element 2: [expression]"
+    ]
+  },
+  "meta_analysis": {
+    "dominant_archetypes": ["archetype1", "archetype2"],
+    "individuation_stage": "[assessment of psychological development]",
+    "primary_symbolic_transformation": "[key symbolic process]",
+    "central_complex_constellation": "[core emotional pattern]",
+    "collective_unconscious_themes": ["theme1", "theme2"]
+  }
+}
+```
+
+## EXAMPLE PROMPT
+
+"Analyze the following [debate/monologue/argument] through the lens of analytical psychology. Look beyond conscious expressions to uncover archetypal patterns, shadow projections, and individuation processes:
 
 "{text}"
 
 For each segment, identify both conscious positions and unconscious elements. Pay particular attention to archetypal motifs, symbolic expressions, and psychological typology. Note how the collective unconscious manifests in individual expression.
+
+Present your findings in the required format, with special attention to the underlying psychological narrative from an analytical psychology perspective."
+
+## ANALYSIS METHODOLOGY
+
+1. **Conscious Position Mapping**
+   - Identify persona and conscious attitude
+   - Note psychological type and orientation
+   - Map explicit arguments and positions
+   - Observe conscious adaptation strategies
+
+2. **Archetype Identification**
+   - Detect primary archetypal patterns
+   - Connect to universal human motifs
+   - Identify mythological parallels
+   - Map archetypal transformations
+
+3. **Symbol Amplification**
+   - Analyze key symbols through associations
+   - Connect personal to collective symbolism
+   - Explore cultural and historical dimensions
+   - Track symbolic transformations
+
+4. **Shadow Analysis**
+   - Identify projections onto others
+   - Note emotionally charged reactions
+   - Detect disowned qualities in criticism
+   - Map shadow integration possibilities
+
+5. **Individuation Assessment**
+   - Evaluate psychological development
+   - Identify integration of opposites
+   - Note transcendent elements
+   - Assess movement toward psychological wholeness
+
+## METHODOLOGICAL GUIDELINES
+
+1. **Amplification Approach**:
+   - Expand symbols through cultural and historical associations
+   - Connect personal expressions to universal patterns
+   - Explore mythological parallels
+   - Develop rich symbolic understanding
+
+2. **Typological Sensitivity**:
+   - Attend to thinking/feeling/sensing/intuiting functions
+   - Note introversion/extraversion orientation
+   - Identify inferior function manifestations
+   - Recognize one-sidedness and compensation
+
+3. **Archetypal Awareness**:
+   - Recognize universal patterns in individual expression
+   - Attend to primordial images and motifs
+   - Note numinous or emotionally charged content
+   - Identify connection to collective human experience
+
+4. **Symbolic Consciousness**:
+   - Treat expressions as potentially symbolic
+   - Look for transformative symbols
+   - Note mandala-like patterns of wholeness
+   - Identify alchemical processes in symbolic development
+
+5. **Individuation Focus**:
+   - Observe movement toward psychological wholeness
+   - Note integration of conscious and unconscious
+   - Identify transcendence of opposites
+   - Recognize expressions of the Self

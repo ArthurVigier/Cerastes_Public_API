@@ -384,6 +384,72 @@ async def handle_payment_succeeded(invoice):
             # Enregistrer l'événement d'abonnement
             await record_subscription_event(
                 user_id=user.id,
+                event_type="payment_succeeded",
+                subscription_id=subscription_id,
+                invoice_id=invoice.id,
+                amount=invoice.amount_paid / 100,  # Convertir les centimes en dollars/euros
+                plan_id=plan_details.get("id", "unknown"),
+                plan_name=plan_details.get("name", "Unknown Plan")
+            )
+            
+            logger.info(f"Niveau d'API mis à jour pour l'utilisateur {user.id}: {api_level}")
+    except Exception as e:
+        logger.error(f"Erreur lors du traitement du paiement réussi: {e}")
+
+async def handle_payment_failed(invoice):
+    """
+    Traite un paiement échoué.
+    """
+    try:
+        # Récupérer les informations client et abonnement
+        subscription_id = invoice.subscription
+        customer_id = invoice.customer
+        
+        # Récupérer l'utilisateur à partir des métadonnées du client
+        from database import get_user_by_stripe_id
+        user = await get_user_by_stripe_id(customer_id)
+        
+        if user:
+            # Enregistrer l'événement d'abonnement
+            await record_subscription_event(
+                user_id=user.id,
+                event_type="payment_failed",
+                subscription_id=subscription_id,
+                invoice_id=invoice.id,
+                amount=invoice.amount_due / 100,  # Convertir les centimes en dollars/euros
+                error_message=invoice.last_payment_error.message if invoice.last_payment_error else "Unknown error"
+            )
+            
+            logger.warning(f"Paiement échoué pour l'utilisateur {user.id}, abonnement {subscription_id}")
+    except Exception as e:
+        logger.error(f"Erreur lors du traitement du paiement échoué: {e}")
+
+async def handle_subscription_created(subscription):
+    """
+    Traite la création d'un abonnement.
+    """
+    try:
+        # Récupérer les informations client
+        customer_id = subscription.customer
+        
+        # Récupérer les détails du plan
+        price_id = subscription.items.data[0].price.id
+        plan_details = PRICE_ID_TO_PLAN.get(price_id, {})
+        
+        # Récupérer l'utilisateur à partir des métadonnées du client
+        from database import get_user_by_stripe_id
+        user = await get_user_by_stripe_id(customer_id)
+        
+        if user:
+            # Mettre à jour le niveau d'API de l'utilisateur si l'abonnement est actif
+            if subscription.status == "active":
+                api_level = plan_details.get("api_level", ApiKeyLevel.FREE)
+                user.subscription = api_level
+                await update_user(user)
+            
+            # Enregistrer l'événement d'abonnement
+            await record_subscription_event(
+                user_id=user.id,
                 event_type="subscription_created",
                 subscription_id=subscription.id,
                 plan_id=plan_details.get("id", "unknown"),
@@ -741,151 +807,4 @@ async def delete_payment_method(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erreur interne du serveur"
-        )_id)
-        
-        if user:
-            # Mettre à jour le niveau d'API de l'utilisateur
-            api_level = plan_details.get("api_level", ApiKeyLevel.FREE)
-            user.subscription = api_level
-            await update_user(user)
-            
-            # Enregistrer l'événement d'abonnement
-            await record_subscription_event(
-                user_id=user.id,
-                event_type="payment_succeeded",
-                subscription_id=subscription_id,
-                invoice_id=invoice.id,
-                amount=invoice.amount_paid / 100,  # Convertir les centimes en dollars/euros
-                plan_id=plan_details.get("id", "unknown"),
-                plan_name=plan_details.get("name", "Unknown Plan")
-            )
-            
-            logger.info(f"Niveau d'API mis à jour pour l'utilisateur {user.id}: {api_level}")
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement du paiement réussi: {e}")
-
-async def handle_payment_failed(invoice):
-    """
-    Traite un paiement échoué.
-    """
-    try:
-        # Récupérer les informations client et abonnement
-        subscription_id = invoice.subscription
-        customer_id = invoice.customer
-        
-        # Récupérer l'utilisateur à partir des métadonnées du client
-        from database import get_user_by_stripe_id
-        user = await get_user_by_stripe_id(customer_id)
-        
-        if user:
-            # Enregistrer l'événement d'abonnement
-            await record_subscription_event(
-                user_id=user.id,
-                event_type="payment_failed",
-                subscription_id=subscription_id,
-                invoice_id=invoice.id,
-                amount=invoice.amount_due / 100,  # Convertir les centimes en dollars/euros
-                error_message=invoice.last_payment_error.message if invoice.last_payment_error else "Unknown error"
-            )
-            
-            logger.warning(f"Paiement échoué pour l'utilisateur {user.id}, abonnement {subscription_id}")
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement du paiement échoué: {e}")
-
-async def handle_subscription_created(subscription):
-    """
-    Traite la création d'un abonnement.
-    """
-    try:
-        # Récupérer les informations client
-        customer_id = subscription.customer
-        
-        # Récupérer les détails du plan
-        price_id = subscription.items.data[0].price.id
-        plan_details = PRICE_ID_TO_PLAN.get(price_id, {})
-        
-        # Récupérer l'utilisateur à partir des métadonnées du client
-        from database import get_user_by_stripe_id
-        user = await get_user_by_stripe_id(customer_id)
-        if user:
-            # Mettre à jour le niveau d'API de l'utilisateur
-            api_level = plan_details.get("api_level", ApiKeyLevel.FREE)
-            user.subscription = api_level
-            await update_user(user)
-            
-            # Enregistrer l'événement d'abonnement
-            await record_subscription_event(
-                user_id=user.id,
-                event_type="subscription_created",
-                subscription_id=subscription.id,
-                plan_id=plan_details.get("id", "unknown"),
-                plan_name=plan_details.get("name", "Unknown Plan"),
-                status=subscription.status
-            )
-            
-            logger.info(f"Abonnement créé pour l'utilisateur {user.id}: {subscription.id}")
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement de la création d'abonnement: {e}")
-
-async def handle_subscription_updated(subscription):
-    """
-    Traite la mise à jour d'un abonnement.
-    """
-    try:
-        # Récupérer les informations client
-        customer_id = subscription.customer
-        
-        # Récupérer les détails du plan
-        price_id = subscription.items.data[0].price.id
-        plan_details = PRICE_ID_TO_PLAN.get(price_id, {})
-        
-        # Récupérer l'utilisateur à partir des métadonnées du client
-        from database import get_user_by_stripe_id
-        user = await get_user_by_stripe_id(customer_id)
-        if user:
-            # Mettre à jour le niveau d'API de l'utilisateur
-            api_level = plan_details.get("api_level", ApiKeyLevel.FREE)
-            user.subscription = api_level
-            await update_user(user)
-            
-            # Enregistrer l'événement d'abonnement
-            await record_subscription_event(
-                user_id=user.id,
-                event_type="subscription_updated",
-                subscription_id=subscription.id,
-                plan_id=plan_details.get("id", "unknown"),
-                plan_name=plan_details.get("name", "Unknown Plan"),
-                status=subscription.status
-            )
-            
-            logger.info(f"Abonnement mis à jour pour l'utilisateur {user.id}: {subscription.id}")
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement de la mise à jour d'abonnement: {e}")
-async def handle_subscription_deleted(subscription):
-    """
-    Traite la suppression d'un abonnement.
-    """
-    try:
-        # Récupérer les informations client
-        customer_id = subscription.customer
-        
-        # Récupérer l'utilisateur à partir des métadonnées du client
-        from database import get_user_by_stripe_id
-        user = await get_user_by_stripe_id(customer_id)
-        
-        if user:
-            # Mettre à jour le niveau d'API de l'utilisateur
-            user.subscription = ApiKeyLevel.FREE
-            await update_user(user)
-            
-            # Enregistrer l'événement d'abonnement
-            await record_subscription_event(
-                user_id=user.id,
-                event_type="subscription_deleted",
-                subscription_id=subscription.id,
-                status=subscription.status
-            )
-            
-            logger.info(f"Abonnement supprimé pour l'utilisateur {user.id}: {subscription.id}")
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement de la suppression d'abonnement: {e}")
+        )

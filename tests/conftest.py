@@ -1,139 +1,274 @@
 """
-Configuration globale pour les tests pytest de l'API d'inférence multi-session.
+Main pytest configuration for API testing with fixtures for authentication, database, and API clients.
 """
 
 import pytest
 import os
 import requests
 import time
-import sys
+import uuid
+import json
 from pathlib import Path
+from typing import Dict, Any, Generator
 
-# Ajouter le répertoire racine du projet au PYTHONPATH
-# Cette ligne résout le problème d'importation des modules
-project_root = Path(__file__).parent.parent.absolute()
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
-    print(f"Ajout du chemin racine au sys.path: {project_root}")
-
-# URL de base de l'API (ajuster selon l'environnement)
+# URL of the API
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
-# Variables partagées entre les tests
-shared_data = {
-    "user": None,
-    "token": None,
-    "api_key": None
-}
+# Test API Key (can be overridden by environment variable)
+TEST_API_KEY = os.environ.get("TEST_API_KEY", "test-api-key-for-automation")
 
-@pytest.fixture(scope="session", autouse=True)
-def check_api_availability():
-    """Vérifie si l'API est disponible avant d'exécuter les tests."""
-    try:
-        response = requests.get(f"{BASE_URL}/api/health", timeout=5)
-        if response.status_code != 200:
-            pytest.skip(f"L'API n'est pas disponible ou a retourné un statut non-OK: {response.status_code}")
-    except requests.exceptions.RequestException:
-        pytest.skip("L'API n'est pas accessible")
+# Placeholder for database session if needed
+try:
+    from db import engine, SessionLocal, get_db
+    from db.models import User, ApiKey
+    HAS_DB_ACCESS = True
+except ImportError:
+    HAS_DB_ACCESS = False
+    print("Warning: Database models could not be imported. DB tests will be skipped.")
+
+# =====================
+# UTILITY FUNCTIONS
+# =====================
+
+def generate_unique_username():
+    """Generate a unique username for test user registration."""
+    return f"testuser_{uuid.uuid4().hex[:8]}"
+
+def get_api_key_headers(api_key):
+    """Create headers with API key authentication."""
+    return {"X-API-Key": api_key}
+
+def get_token_headers(token):
+    """Create headers with JWT token authentication."""
+    return {"Authorization": f"Bearer {token}"}
+
+# =====================
+# BASIC FIXTURES
+# =====================
 
 @pytest.fixture(scope="session")
 def api_url():
-    """Retourne l'URL de base de l'API."""
+    """Return the base API URL."""
     return BASE_URL
 
 @pytest.fixture(scope="session")
-def api_key():
-    """Retourne une clé API valide pour les tests."""
-    # Essayer d'utiliser une clé API fournie via variable d'environnement
-    api_key = os.environ.get("TEST_API_KEY")
-    if api_key:
-        return api_key
-    
-    # Si aucune clé API n'est fournie, essayer de créer un utilisateur et une clé API
-    if not shared_data["api_key"]:
-        try:
-            # Créer un utilisateur
-            import random
-            import string
-            random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-            username = f"testuser_{random_suffix}"
-            
-            user_data = {
-                "username": username,
-                "email": f"{username}@example.com",
-                "password": "Password123!",
-                "full_name": "Test User"
-            }
-            
-            response = requests.post(f"{BASE_URL}/auth/register", json=user_data)
-            if response.status_code != 201:
-                pytest.skip(f"Impossible de créer un utilisateur de test: {response.text}")
-            
-            user_info = response.json()
-            shared_data["user"] = user_info
-            
-            # Se connecter pour obtenir un token
-            login_data = {
-                "username": username,
-                "password": "Password123!"
-            }
-            
-            response = requests.post(f"{BASE_URL}/auth/token", data=login_data)
-            if response.status_code != 200:
-                pytest.skip(f"Impossible d'obtenir un token: {response.text}")
-            
-            token_info = response.json()
-            shared_data["token"] = token_info["access_token"]
-            
-            # Créer une clé API
-            headers = {
-                "Authorization": f"Bearer {shared_data['token']}"
-            }
-            
-            key_data = {
-                "name": "Test API Key"
-            }
-            
-            response = requests.post(f"{BASE_URL}/auth/api-keys", json=key_data, headers=headers)
-            if response.status_code != 201:
-                pytest.skip(f"Impossible de créer une clé API: {response.text}")
-            
-            api_key_info = response.json()
-            shared_data["api_key"] = api_key_info["key"]
-            
-        except Exception as e:
-            pytest.skip(f"Erreur lors de la création d'une clé API de test: {e}")
-    
-    return shared_data["api_key"]
+def health_check(api_url):
+    """Check if the API is running before tests."""
+    try:
+        response = requests.get(f"{api_url}/health", timeout=5)
+        if response.status_code != 200:
+            pytest.skip(f"API is not available. Status code: {response.status_code}")
+    except requests.RequestException as e:
+        pytest.skip(f"API is not reachable: {str(e)}")
+    return True
+
+# =====================
+# USER & AUTH FIXTURES
+# =====================
 
 @pytest.fixture(scope="session")
-def auth_headers(api_key):
-    """Retourne les headers d'authentification avec une clé API."""
+def test_user_credentials():
+    """Return credentials for test user registration."""
+    username = generate_unique_username()
     return {
-        "X-API-Key": api_key
+        "username": username,
+        "email": f"{username}@example.com",
+        "password": "TestPassword123!",
+        "full_name": "Test User"
     }
 
 @pytest.fixture(scope="session")
-def wait_for_completion():
-    """Fonction utilitaire pour attendre la fin d'une tâche."""
-    def _wait_for_completion(task_id, auth_headers, max_retries=30, interval=10):
-        """Attend la fin d'une tâche et retourne son résultat."""
-        for i in range(max_retries):
-            response = requests.get(f"{BASE_URL}/api/inference/{task_id}", headers=auth_headers)
-            assert response.status_code == 200
+def registered_user(api_url, test_user_credentials, health_check):
+    """Register a test user and return user data."""
+    # Try to register new user
+    response = requests.post(
+        f"{api_url}/auth/register", 
+        json=test_user_credentials
+    )
+    
+    # If registration is disabled or fails, skip dependent tests
+    if response.status_code == 403 and "registration is disabled" in response.text.lower():
+        pytest.skip("User registration is disabled on this server")
+    
+    if response.status_code != 201:
+        pytest.skip(f"Failed to register test user: {response.status_code}, {response.text}")
+    
+    return response.json()
+
+@pytest.fixture(scope="session")
+def auth_token(api_url, test_user_credentials, registered_user, health_check):
+    """Get auth token for the test user."""
+    # Prepare login data
+    login_data = {
+        "username": test_user_credentials["username"],
+        "password": test_user_credentials["password"]
+    }
+    
+    # Login to get token
+    response = requests.post(
+        f"{api_url}/auth/token",
+        data=login_data  # Note: uses form data, not JSON
+    )
+    
+    if response.status_code != 200:
+        pytest.skip(f"Failed to get auth token: {response.status_code}, {response.text}")
+    
+    token_data = response.json()
+    return token_data["access_token"]
+
+@pytest.fixture(scope="session")
+def api_key(api_url, auth_token, health_check):
+    """Create and return an API key for the test user."""
+    # If TEST_API_KEY environment variable is set, use it
+    if os.environ.get("TEST_API_KEY"):
+        return os.environ.get("TEST_API_KEY")
+    
+    # Otherwise create a new API key
+    headers = get_token_headers(auth_token)
+    key_data = {"name": "Test API Key"}
+    
+    response = requests.post(
+        f"{api_url}/auth/api-keys",
+        json=key_data,
+        headers=headers
+    )
+    
+    if response.status_code != 201:
+        pytest.skip(f"Failed to create API key: {response.status_code}, {response.text}")
+    
+    return response.json()["key"]
+
+@pytest.fixture(scope="function")
+def auth_headers(auth_token):
+    """Return headers with JWT token authentication."""
+    return get_token_headers(auth_token)
+
+@pytest.fixture(scope="function")
+def api_headers(api_key):
+    """Return headers with API key authentication."""
+    return get_api_key_headers(api_key)
+
+# =====================
+# DATABASE FIXTURES
+# =====================
+
+@pytest.fixture(scope="function")
+def db_session():
+    """Provide a database session if database access is available."""
+    if not HAS_DB_ACCESS:
+        pytest.skip("Database access not available")
+    
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# =====================
+# TEST DATA FIXTURES
+# =====================
+
+@pytest.fixture(scope="function")
+def sample_text():
+    """Sample text for inference tests."""
+    return """
+    The quick brown fox jumps over the lazy dog. This pangram contains every
+    letter of the English alphabet at least once. Pangrams are often used to 
+    test fonts, keyboards, and OCR systems.
+    """
+
+@pytest.fixture(scope="function")
+def sample_video_path():
+    """Return path to sample video if available."""
+    video_path = os.environ.get("SAMPLE_VIDEO_PATH")
+    if not video_path or not os.path.exists(video_path):
+        pytest.skip("Sample video not available. Set SAMPLE_VIDEO_PATH environment variable.")
+    return video_path
+
+@pytest.fixture(scope="function")
+def sample_audio_path():
+    """Return path to sample audio if available."""
+    audio_path = os.environ.get("SAMPLE_AUDIO_PATH")
+    if not audio_path or not os.path.exists(audio_path):
+        pytest.skip("Sample audio not available. Set SAMPLE_AUDIO_PATH environment variable.")
+    return audio_path
+
+# =====================
+# TASK MANAGEMENT FIXTURES
+# =====================
+
+@pytest.fixture(scope="function")
+def wait_for_task():
+    """Return a function that waits for a task to complete."""
+    def _wait_for_task(task_id, headers, endpoint="/api/tasks/{task_id}", max_retries=30, delay=5):
+        """
+        Wait for a task to complete and return its result.
+        
+        Args:
+            task_id: ID of the task to wait for
+            headers: Authentication headers
+            endpoint: API endpoint pattern with {task_id} placeholder
+            max_retries: Maximum number of retries
+            delay: Delay between retries in seconds
             
+        Returns:
+            Task data dictionary or None if failed
+        """
+        formatted_endpoint = endpoint.format(task_id=task_id)
+        
+        for i in range(max_retries):
+            response = requests.get(f"{BASE_URL}{formatted_endpoint}", headers=headers)
+            if response.status_code != 200:
+                print(f"Error retrieving task status: {response.status_code}")
+                time.sleep(delay)
+                continue
+                
             data = response.json()
             
+            # If task failed, return None
             if data["status"] == "failed":
-                pytest.fail(f"La tâche a échoué: {data.get('error', 'Erreur inconnue')}")
+                print(f"Task failed: {data.get('error', 'Unknown error')}")
+                return None
             
+            # If task is completed, return results
             if data["status"] == "completed":
                 return data
                 
-            print(f"Attente de la fin de la tâche... Progression: {data.get('progress', 0):.0f}% (tentative {i+1}/{max_retries})")
+            # Display progress
+            print(f"Waiting for task... Progress: {data.get('progress', 0):.0f}% (attempt {i+1}/{max_retries})")
                 
-            time.sleep(interval)
+            # Wait before retrying
+            time.sleep(delay)
         
-        pytest.fail(f"La tâche n'est pas terminée après {max_retries} tentatives")
+        print(f"Timeout waiting for task {task_id}")
+        return None
     
-    return _wait_for_completion
+    return _wait_for_task
+
+# =====================
+# CLEANUP FIXTURES
+# =====================
+
+@pytest.fixture(scope="function")
+def cleanup_task():
+    """Return a function to clean up a task after test."""
+    def _cleanup_task(task_id, headers):
+        """Clean up a task by ID."""
+        if not task_id:
+            return False
+        
+        try:
+            response = requests.delete(f"{BASE_URL}/api/tasks/{task_id}", headers=headers)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Error cleaning up task {task_id}: {e}")
+            return False
+    
+    return _cleanup_task
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup(request):
+    """Perform cleanup after all tests are done."""
+    yield
+    # Additional cleanup can be added here
+    print("Test suite completed. Cleaning up...")

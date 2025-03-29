@@ -42,8 +42,343 @@ After completing all segments:
 4. **Principle of Completeness**: Ensure all explicit and implicit elements are captured.
 5. **Principle of Precision**: Express each component with maximum clarity and specificity.
 
-Analyze the following text comprehensively. First read the entire text to understand its overall structure, then analyze it segment by segment, and finally synthesize your findings:
+## COMPONENT EXTRACTION GUIDELINES
+
+For each segment of the input text, identify and extract the following components:
+
+### 1. Implicit Axioms & Postulates
+- **Definition**: Unstated foundational assumptions that must be true for the argument to function
+- **Method**:
+  - Identify claims treated as self-evident
+  - Determine what background knowledge is presumed
+  - Recognize unstated value judgments or normative positions
+- **Required Format**:
+  ```
+  • Axiom 1: [Precise formulation]
+  • Axiom 2: [Precise formulation]
+  ```
+
+### 2. Explicit & Implicit Premises
+- **Definition**: Stated and unstated factual claims serving as foundation for reasoning
+- **Method**:
+  - Extract directly stated premises
+  - Infer necessary implied premises
+  - Distinguish between major and minor premises
+- **Required Format**:
+  ```
+  • Explicit Premise 1: [Quoted or paraphrased text]
+  • Explicit Premise 2: [Quoted or paraphrased text]
+  • Implicit Premise 1: [Formulated statement]
+  ```
+
+### 3. Steps of Reasoning
+- **Definition**: The logical progression from premises to conclusions
+- **Method**:
+  - Identify inferential moves
+  - Trace logical connections
+  - Map argumentative structure
+- **Required Format**:
+  ```
+  • Step 1: [Specific inferential move]
+  • Step 2: [Specific inferential move]
+  ```
+
+### 4. Conclusion
+- **Definition**: The ultimate claim or position the text argues for
+- **Method**:
+  - Identify final position
+  - Distinguish from intermediate conclusions
+  - Determine scope and strength of conclusion
+- **Required Format**:
+  ```
+  • Primary Conclusion: [Final position]
+  • Qualified By: [Any limitations or conditions]
+  ```
+
+### 5. Formal Structure
+- **Definition**: The logical form of the argument
+- **Method**:
+  - Identify argument patterns (deductive, inductive, abductive)
+  - Recognize formal syllogisms or other structures
+  - Assess validity of structure
+- **Required Format**:
+  ```
+  • Structure Type: [Deductive/Inductive/Abductive/Mixed]
+  • Pattern: [Specific pattern e.g., "Modus Ponens", "Inference to Best Explanation"]
+  • Formal Representation: [Symbolic representation if applicable]
+  ```
+
+### 6. Causal/Functional Relations
+- **Definition**: Cause-effect relationships central to the argument
+- **Method**:
+  - Identify claimed causal links
+  - Evaluate mechanism explanations
+  - Assess causal assumptions
+- **Required Format**:
+  ```
+  • Relation 1: [Cause] → [Effect]
+  • Mechanism: [Explanation of how/why]
+  • Evidence Cited: [Supporting evidence if present]
+  ```
+
+### 7. Speculative & Alternative Hypotheses
+- **Definition**: Competing explanations or possibilities considered
+- **Method**:
+  - Identify alternatives the author addresses
+  - Note hypotheticals posed
+  - Extract counterfactuals
+- **Required Format**:
+  ```
+  • Alternative 1: [Description]
+  • Author's Response: [How alternative is addressed]
+  • Counterfactual Considered: [If/then scenarios explored]
+  ```
+
+### 8. Type of Argumentation & Reasoning
+- **Definition**: The methodological approach to persuasion and inference
+- **Method**:
+  - Categorize reasoning approach
+  - Identify rhetorical strategies
+  - Evaluate dialectical patterns
+- **Required Format**:
+  ```
+  • Primary Type: [e.g., "Consequentialist", "Analogical", "Historical"]
+  • Secondary Elements: [Other approaches used]
+  • Rhetorical Strategy: [Persuasive techniques employed]
+  ```
+
+### 9. Dependency Model Between Elements
+- **Definition**: The network of relationships between components
+- **Method**:
+  - Trace logical dependencies
+  - Identify supporting relationships
+  - Map hierarchical structure
+- **Required Format**:
+  ```
+  • Element X depends on: [List of elements]
+  • Element Y supports: [List of elements]
+  • Critical Path: [Essential chain of dependencies]
+  ```
+
+### 10. Nature of the Statement
+- **Definition**: Linguistic and epistemological classification
+- **Method**:
+  - Determine if descriptive/normative/prescriptive
+  - Assess epistemic status (certainty, probability)
+  - Identify speech acts
+- **Required Format**:
+  ```
+  • Statement Type: [Descriptive/Normative/Prescriptive]
+  • Epistemic Status: [Certain/Probable/Speculative]
+  • Speech Act: [Assertion/Command/Query/etc.]
+  ```
+
+### 11. References & Intertextuality
+- **Definition**: Citations, allusions, and connections to external sources
+- **Method**:
+  - Extract explicit references
+  - Identify implicit allusions
+  - Note intellectual traditions invoked
+- **Required Format**:
+  ```
+  • Explicit Reference 1: [Source and context]
+  • Implicit Allusion: [Inferred connection]
+  • Tradition/Framework: [Intellectual lineage]
+  ```
+
+### 12. Points of Ambiguity/Indetermination
+- **Definition**: Areas of uncertainty or multiple interpretations
+- **Method**:
+  - Identify vague or equivocal terms
+  - Note areas of incomplete reasoning
+  - Highlight potential interpretive disputes
+- **Required Format**:
+  ```
+  • Ambiguity 1: [Description and location]
+  • Possible Interpretations: [List alternatives]
+  • Significance: [Impact on overall argument]
+  ```
+
+### 13. Temporality & Modality
+- **Definition**: Time-related aspects and possibility/necessity distinctions
+- **Method**:
+  - Extract temporal claims and assumptions
+  - Identify modal qualifiers
+  - Note conditional reasoning
+- **Required Format**:
+  ```
+  • Temporal Frame: [Time period referenced]
+  • Modal Claims: [Necessity/Possibility assertions]
+  • Conditionals: [If-then structures]
+  ```
+
+## SEGMENT TRANSITION HANDLING
+
+When transitioning between segments:
+
+1. **Continuity Tracking**:
+   - Note continuing arguments or themes
+   - Identify when new segments build on previous ones
+   - Track the evolution of key concepts
+
+2. **Contradiction Identification**:
+   - Flag when later segments modify or contradict earlier ones
+   - Note qualification or recontextualization of earlier claims
+   - Identify apparent shifts in position or reasoning
+
+3. **Cross-Reference Annotation**:
+   - Note when later segments reference earlier ones
+   - Identify retrospective clarifications or elaborations
+   - Track forward references or foreshadowing
+
+4. **Progressive Refinement**:
+   - Update earlier component extractions based on new information
+   - Enrich dependency models as new connections emerge
+   - Refine understanding of argument structure as it develops
+
+## OUTPUT FORMAT
+
+Produce your analysis as a structured JSON-like format:
+
+```
+{{
+  "text_analyzed": "[Brief identifier of analyzed text]",
+  "components": {{
+    "implicitAxioms": [
+      "Axiom 1: [formulation]",
+      "Axiom 2: [formulation]"
+    ],
+    "premises": [
+      "Explicit Premise 1: [content]",
+      "Implicit Premise 1: [content]"
+    ],
+    "reasoning": [
+      "Step 1: [description]",
+      "Step 2: [description]"
+    ],
+    "conclusion": "Primary Conclusion: [content]",
+    "formalStructure": "Structure Type: [type], Pattern: [pattern]",
+    "causalRelations": [
+      "Relation 1: [cause] → [effect]",
+      "Relation 2: [cause] → [effect]"
+    ],
+    "hypotheses": [
+      "Alternative 1: [description]",
+      "Counterfactual: [description]"
+    ],
+    "argumentationType": "Primary Type: [type], Secondary Elements: [elements]",
+    "dependencyModel": [
+      "Element X depends on: [elements]",
+      "Element Y supports: [elements]"
+    ],
+    "statementNature": "Type: [type], Epistemic Status: [status]",
+    "references": [
+      "Explicit Reference 1: [description]",
+      "Implicit Allusion: [description]"
+    ],
+    "ambiguities": [
+      "Ambiguity 1: [description], Possible Interpretations: [list]",
+      "Ambiguity 2: [description], Possible Interpretations: [list]"
+    ],
+    "temporality": [
+      "Temporal Frame: [description]",
+      "Modal Claims: [list]"
+    ]
+  }},
+  "meta_analysis": {{
+    "confidence_levels": {{
+      "high_confidence": ["component1", "component2"],
+      "medium_confidence": ["component3", "component4"],
+      "low_confidence": ["component5", "component6"]
+    }},
+    "completeness_assessment": "[evaluation of analysis completeness]",
+    "key_insights": [
+      "Insight 1: [description]",
+      "Insight 2: [description]"
+    ],
+    "segment_coherence": {{
+      "strong_transitions": ["segment1->segment2", "segment3->segment4"],
+      "weak_transitions": ["segment2->segment3"],
+      "developmental_arcs": ["concept1: evolution across segments"]
+    }}
+  }}
+}}
+```
+
+## EXAMPLE PROMPT
+
+"Analyze the following [debate/monologue/argument] comprehensively. First read the entire text to understand its overall structure, then analyze it segment by segment, and finally synthesize your findings:
 
 "{text}"
 
-For each segment, extract all relevant components from the 13 categories as defined in the Component Extraction System. Track how arguments and concepts develop across segments. After completing all segments, provide a final integrated analysis that captures the complete argument structure.
+
+For each segment, extract all relevant components from the 13 categories. Track how arguments and concepts develop across segments. After completing all segments, provide a final integrated analysis that captures the complete argument structure.
+
+Present your findings in the required JSON-like format."
+
+## SEGMENTED ANALYSIS PROCESS
+
+1. **Global Initial Reading**
+   - Read the entire text once
+   - Identify main claims and structure
+   - Note key transitions and sections
+   - Form preliminary hypotheses about argument structure
+
+2. **Segment Definition**
+   - Divide text into natural logical segments
+   - Consider paragraph boundaries, topic shifts, or argumentative units
+   - Note segment relationships and transitions
+   - Create a segment map for systematic analysis
+
+3. **Per-Segment Deep Analysis**
+   - For each segment, extract all relevant components
+   - Note how each segment builds on or modifies previous ones
+   - Track the evolution of concepts and arguments
+   - Flag potential tensions or contradictions
+
+4. **Progressive Component Building**
+   - Update component database with each segment
+   - Refine existing components based on new information
+   - Note when later segments clarify earlier ones
+   - Track development of argument structure
+
+5. **Final Integration**
+   - Harmonize all segment analyses
+   - Resolve apparent tensions or contradictions
+   - Construct comprehensive dependency models
+   - Provide global assessment of argument structure
+
+## ENHANCING REASONING DEPTH
+
+To ensure maximal extraction of components:
+
+1. **Principle of Steelmanning**:
+   - Always construct the strongest possible version of arguments
+   - Resolve ambiguities in favor of coherence when reasonable
+   - Note when multiple interpretations are equally plausible
+
+2. **Contextual Sensitivity**:
+   - Consider historical/disciplinary/cultural context
+   - Account for genre conventions and expectations
+   - Note domain-specific terminology or framings
+
+3. **Dialectical Imagination**:
+   - Consider potential objections and responses
+   - Identify unstated but necessary components
+   - Recognize implicit dialogical elements
+
+4. **Depth vs. Breadth Balance**:
+   - Prioritize complete coverage of all components
+   - Provide sufficient detail for subsequent analysis
+   - Flag areas requiring additional specialized analysis
+
+5. **Edge Case Handling**:
+   - For non-argumentative texts, adapt framework appropriately
+   - For highly technical content, prioritize structure over domain expertise
+   - For poetic or figurative language, note literal and metaphorical readings
+
+6. **Segment Relationship Analysis**:
+   - Identify how segments build on each other
+   - Note when later segments qualify earlier ones
+   - Track argumentative development across segments
+   - Assess overall textual coherence

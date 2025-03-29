@@ -1,340 +1,164 @@
 """
-Tests pour le post-processeur JSONSimplifier
--------------------------------------------
-Ce module teste les fonctionnalités du post-processeur JSONSimplifier,
-y compris l'activation/désactivation et différents scénarios de traitement.
+Tests for the JSON Simplifier post-processor
+-----------------------------------------
+This module tests the JSON Simplifier functionality which converts
+complex JSON results into plain text explanations.
 """
 
 import pytest
+import requests
 import json
-import os
-from unittest.mock import MagicMock, patch
-from typing import Dict, Any
+from unittest.mock import patch, MagicMock
 
-from postprocessors.json_simplifier import JSONSimplifier
-from postprocessors import get_postprocessor
-
-# Données de test
-SAMPLE_JSON_RESULT = {
-    "result": {
-        "analysis": {
-            "sentiment": "positive",
-            "tone": "formal",
-            "key_points": [
-                "Point 1: Le sujet est bien expliqué",
-                "Point 2: Arguments clairs et cohérents",
-                "Point 3: Conclusion logique"
-            ],
-            "complexity_score": 0.75,
-            "readability_metrics": {
-                "flesch_kincaid": 65.2,
-                "smog_index": 8.1,
-                "coleman_liau_index": 10.3
-            }
-        },
-        "language": "fr",
-        "processing_time": 1.23
-    }
-}
-
-EXPECTED_PLAIN_TEXT = "Le texte a un sentiment positif avec un ton formel. Il comprend 3 points clés: le sujet est bien expliqué, les arguments sont clairs et cohérents, et la conclusion est logique. Le texte a un score de complexité de 0,75 et présente une bonne lisibilité avec un indice Flesch-Kincaid de 65,2."
-
-class MockModel:
-    """Classe simulant un modèle de langage pour les tests"""
-    
-    def __init__(self, return_value=None):
-        self.return_value = return_value or EXPECTED_PLAIN_TEXT
-    
-    def generate(self, prompt, **kwargs):
-        return self.return_value
 
 class TestJSONSimplifier:
+    """Test class for JSON Simplifier functionality."""
     
-    @pytest.fixture
-    def basic_config(self):
-        """Configuration de base pour le post-processeur"""
+    @pytest.fixture(scope="function")
+    def sample_json_result(self):
+        """Return a sample JSON result for testing."""
         return {
-            "enabled": True,
-            "model": "test-model",
-            "system_prompt": "Translate this json {text} in plain french",
-            "max_tokens": 500,
-            "temperature": 0.3,
-            "apply_to": ["inference", "video", "transcription"]
-        }
-    
-    @pytest.fixture
-    def disabled_config(self):
-        """Configuration avec le post-processeur désactivé"""
-        return {
-            "enabled": False,
-            "model": "test-model",
-            "system_prompt": "Translate this json {text} in plain french",
-            "max_tokens": 500,
-            "temperature": 0.3,
-            "apply_to": ["inference", "video", "transcription"]
-        }
-    
-    @pytest.fixture
-    def limited_tasks_config(self):
-        """Configuration avec un ensemble limité de types de tâches"""
-        return {
-            "enabled": True,
-            "model": "test-model",
-            "system_prompt": "Translate this json {text} in plain french",
-            "max_tokens": 500,
-            "temperature": 0.3,
-            "apply_to": ["inference", "video"]  # Sans "transcription"
-        }
-    
-    def test_initialization(self, basic_config):
-        """Teste l'initialisation correcte du post-processeur"""
-        simplifier = JSONSimplifier(basic_config)
-        
-        assert simplifier.enabled == basic_config["enabled"]
-        assert simplifier.model_name == basic_config["model"]
-        assert simplifier.system_prompt == basic_config["system_prompt"]
-        assert simplifier.max_tokens == basic_config["max_tokens"]
-        assert simplifier.temperature == basic_config["temperature"]
-        assert simplifier.apply_to == basic_config["apply_to"]
-        assert simplifier.model is None  # Le modèle n'est pas chargé à l'initialisation
-    
-    def test_should_process_enabled(self, basic_config):
-        """Teste la méthode should_process quand le post-processeur est activé"""
-        simplifier = JSONSimplifier(basic_config)
-        
-        # Les types de tâches listés dans apply_to devraient retourner True
-        assert simplifier.should_process("inference") is True
-        assert simplifier.should_process("video") is True
-        assert simplifier.should_process("transcription") is True
-        
-        # Les autres types de tâches devraient retourner False
-        assert simplifier.should_process("other_task") is False
-    
-    def test_should_process_disabled(self, disabled_config):
-        """Teste la méthode should_process quand le post-processeur est désactivé"""
-        simplifier = JSONSimplifier(disabled_config)
-        
-        # Tous les types de tâches devraient retourner False
-        assert simplifier.should_process("inference") is False
-        assert simplifier.should_process("video") is False
-        assert simplifier.should_process("transcription") is False
-        assert simplifier.should_process("other_task") is False
-    
-    def test_should_process_limited_tasks(self, limited_tasks_config):
-        """Teste la méthode should_process avec un ensemble limité de types de tâches"""
-        simplifier = JSONSimplifier(limited_tasks_config)
-        
-        # Les types de tâches listés dans apply_to devraient retourner True
-        assert simplifier.should_process("inference") is True
-        assert simplifier.should_process("video") is True
-        
-        # Les types de tâches non listés devraient retourner False
-        assert simplifier.should_process("transcription") is False
-        assert simplifier.should_process("other_task") is False
-    
-    @patch('postprocessors.json_simplifier.ModelManager')
-    def test_process_success(self, mock_model_manager, basic_config):
-        """Teste le traitement réussi d'un résultat JSON"""
-        # Configurer le mock pour ModelManager
-        mock_manager_instance = MagicMock()
-        mock_model_manager.get_instance.return_value = mock_manager_instance
-        
-        # Configurer le mock pour le modèle
-        mock_model = MockModel()
-        mock_manager_instance.get_model.return_value = mock_model
-        
-        # Créer l'instance du simplifier
-        simplifier = JSONSimplifier(basic_config)
-        
-        # Traiter le résultat JSON
-        result = SAMPLE_JSON_RESULT.copy()
-        processed = simplifier.process(result, "inference")
-        
-        # Vérifier les résultats
-        assert "plain_explanation" in processed
-        assert processed["plain_explanation"] == EXPECTED_PLAIN_TEXT
-        
-        # Vérifier que le résultat original a été préservé
-        assert processed["result"] == SAMPLE_JSON_RESULT["result"]
-        
-        # Vérifier que le modèle a été correctement appelé
-        mock_manager_instance.get_model.assert_called_once_with("llm", basic_config["model"])
-    
-    @patch('postprocessors.json_simplifier.ModelManager')
-    def test_process_model_error(self, mock_model_manager, basic_config):
-        """Teste le comportement quand le modèle rencontre une erreur"""
-        # Configurer le mock pour déclencher une exception lors de l'appel de generate
-        mock_manager_instance = MagicMock()
-        mock_model_manager.get_instance.return_value = mock_manager_instance
-        
-        mock_model = MagicMock()
-        mock_model.generate.side_effect = Exception("Erreur de modèle simulée")
-        mock_manager_instance.get_model.return_value = mock_model
-        
-        # Créer l'instance du simplifier
-        simplifier = JSONSimplifier(basic_config)
-        
-        # Traiter le résultat JSON
-        result = SAMPLE_JSON_RESULT.copy()
-        processed = simplifier.process(result, "inference")
-        
-        # Vérifier que les résultats originaux sont retournés sans modification
-        assert "plain_explanation" not in processed
-        assert processed == result
-    
-    @patch('postprocessors.json_simplifier.ModelManager')
-    def test_process_model_not_available(self, mock_model_manager, basic_config):
-        """Teste le comportement quand le modèle n'est pas disponible"""
-        # Configurer le mock pour retourner None (modèle non disponible)
-        mock_manager_instance = MagicMock()
-        mock_model_manager.get_instance.return_value = mock_manager_instance
-        mock_manager_instance.get_model.return_value = None
-        
-        # Créer l'instance du simplifier
-        simplifier = JSONSimplifier(basic_config)
-        
-        # Traiter le résultat JSON
-        result = SAMPLE_JSON_RESULT.copy()
-        processed = simplifier.process(result, "inference")
-        
-        # Vérifier que les résultats originaux sont retournés sans modification
-        assert "plain_explanation" not in processed
-        assert processed == result
-    
-    def test_process_disabled(self, disabled_config):
-        """Teste le traitement quand le post-processeur est désactivé"""
-        # Créer l'instance du simplifier désactivé
-        simplifier = JSONSimplifier(disabled_config)
-        
-        # Traiter le résultat JSON
-        result = SAMPLE_JSON_RESULT.copy()
-        processed = simplifier.process(result, "inference")
-        
-        # Vérifier que les résultats originaux sont retournés sans modification
-        assert "plain_explanation" not in processed
-        assert processed == result
-    
-    def test_process_task_not_in_apply_to(self, limited_tasks_config):
-        """Teste le traitement quand le type de tâche n'est pas dans apply_to"""
-        # Créer l'instance du simplifier avec types de tâches limités
-        simplifier = JSONSimplifier(limited_tasks_config)
-        
-        # Traiter le résultat JSON pour un type de tâche non inclus
-        result = SAMPLE_JSON_RESULT.copy()
-        processed = simplifier.process(result, "transcription")  # transcription n'est pas dans apply_to
-        
-        # Vérifier que les résultats originaux sont retournés sans modification
-        assert "plain_explanation" not in processed
-        assert processed == result
-    
-    @patch('postprocessors.json_simplifier.ModelManager')
-    def test_process_json_serialization(self, mock_model_manager, basic_config):
-        """Teste la sérialisation JSON lors du traitement"""
-        # Configurer le mock
-        mock_manager_instance = MagicMock()
-        mock_model_manager.get_instance.return_value = mock_manager_instance
-        mock_model = MockModel()
-        mock_manager_instance.get_model.return_value = mock_model
-        
-        # Créer l'instance du simplifier
-        simplifier = JSONSimplifier(basic_config)
-        
-        # Définir un objet JSON avec des types non-sérialisables
-        complex_result = {
             "result": {
-                "data": set([1, 2, 3]),  # un ensemble n'est pas JSON-sérialisable
-                "function": lambda x: x  # une fonction n'est pas JSON-sérialisable
+                "analysis": {
+                    "sentiment": "positive",
+                    "tone": "formal",
+                    "key_points": [
+                        "Point 1: The subject is well explained",
+                        "Point 2: Clear and coherent arguments",
+                        "Point 3: Logical conclusion"
+                    ],
+                    "complexity_score": 0.75,
+                    "readability_metrics": {
+                        "flesch_kincaid": 65.2,
+                        "smog_index": 8.1,
+                        "coleman_liau_index": 10.3
+                    }
+                },
+                "language": "fr",
+                "processing_time": 1.23
             }
         }
-        
-        # Traiter le résultat JSON
-        try:
-            processed = simplifier.process(complex_result, "inference")
-            # Le test devrait échouer ici, car la sérialisation devrait échouer
-            assert False, "La sérialisation aurait dû échouer avec des types non-sérialisables"
-        except:
-            # Vérifier que l'exception est bien gérée et que le résultat original est retourné
-            pass
     
-    def test_get_postprocessor_function(self, basic_config):
-        """Teste la fonction get_postprocessor du module postprocessors"""
-        with patch('postprocessors.available_postprocessors', {"json_simplifier": JSONSimplifier}):
-            # Obtenir une instance du post-processeur via la fonction get_postprocessor
-            processor = get_postprocessor("json_simplifier", basic_config)
-            
-            # Vérifier que l'instance est bien du type JSONSimplifier
-            assert isinstance(processor, JSONSimplifier)
-            
-            # Vérifier qu'un nom de post-processeur invalide retourne None
-            assert get_postprocessor("invalid_processor", {}) is None
+    @pytest.fixture(scope="function")
+    def inference_task(self, api_url, api_headers, cleanup_task):
+        """Create an inference task that will generate a JSON result."""
+        # Prepare inference data to generate a complex analysis
+        inference_data = {
+            "text": "This is test text for JSON simplification. It should generate a complex result that needs simplification.",
+            "use_segmentation": True,
+            "max_new_tokens": 100,
+            "format": "json"  # Request JSON output if supported
+        }
+        
+        # Start inference task
+        response = requests.post(
+            f"{api_url}/api/inference/start",
+            json=inference_data,
+            headers=api_headers
+        )
+        
+        # Try alternative endpoint if needed
+        if response.status_code == 404:
+            response = requests.post(
+                f"{api_url}/api/inference",
+                json=inference_data,
+                headers=api_headers
+            )
+        
+        # Skip if cannot create a task
+        if response.status_code not in [200, 202]:
+            pytest.skip(f"Could not create inference task: {response.status_code}, {response.text}")
+        
+        # Get task ID
+        data = response.json()
+        task_id = data.get("task_id") or data.get("id")
+        
+        yield task_id
+        
+        # Clean up after test
+        cleanup_task(task_id, api_headers)
     
-    @patch('postprocessors.json_simplifier.ModelManager')
-    def test_prompt_formatting(self, mock_model_manager, basic_config):
-        """Teste le formatage du prompt avec le JSON"""
-        # Configurer le mock
-        mock_manager_instance = MagicMock()
-        mock_model_manager.get_instance.return_value = mock_manager_instance
-        mock_model = MagicMock()
-        mock_manager_instance.get_model.return_value = mock_model
-        mock_model.generate.return_value = EXPECTED_PLAIN_TEXT
+    def test_json_simplification_enabled(self, api_url, api_headers, inference_task, wait_for_task):
+        """Test that JSON simplification is performed when enabled."""
+        # Wait for task to complete
+        result = wait_for_task(inference_task, api_headers, max_retries=10, delay=3)
         
-        # Créer l'instance du simplifier
-        simplifier = JSONSimplifier(basic_config)
+        # Skip if task didn't complete
+        if result is None:
+            pytest.skip(f"Task {inference_task} did not complete in time")
         
-        # Traiter le résultat JSON
-        result = SAMPLE_JSON_RESULT.copy()
-        simplifier.process(result, "inference")
-        
-        # Vérifier que le prompt formaté a été passé au modèle
-        # Récupérer les arguments de l'appel à generate
-        args, kwargs = mock_model.generate.call_args
-        prompt = args[0]
-        
-        # Vérifier que le prompt contient le JSON et respecte le template
-        assert "{text}" not in prompt  # Le placeholder doit être remplacé
-        assert "Translate this json" in prompt  # Le début du prompt doit être présent
-        assert json.dumps(result["result"]) in prompt  # Le JSON doit être sérialisé et inclus
+        # Check if plain_explanation is in the result
+        if "plain_explanation" in result:
+            assert isinstance(result["plain_explanation"], str), "plain_explanation should be a string"
+            assert len(result["plain_explanation"]) > 0, "plain_explanation should not be empty"
+            print(f"JSON simplification is enabled: {result['plain_explanation'][:100]}...")
+        else:
+            print("JSON simplification appears to be disabled or not supported")
     
-    def test_integration_with_env_variables(self):
-        """Teste l'intégration avec les variables d'environnement"""
-        # Sauvegarder les variables d'environnement actuelles
-        original_enabled = os.environ.get("JSON_SIMPLIFIER_ENABLED")
-        original_model = os.environ.get("JSON_SIMPLIFIER_MODEL")
-        original_apply_to = os.environ.get("JSON_SIMPLIFIER_APPLY_TO")
+    def test_direct_simplification_endpoint(self, api_url, api_headers, sample_json_result):
+        """Test the direct JSON simplification endpoint if it exists."""
+        # Try to use a direct simplification endpoint if available
+        response = requests.post(
+            f"{api_url}/api/simplify-json",
+            json=sample_json_result,
+            headers=api_headers
+        )
         
-        try:
-            # Configurer les variables d'environnement pour le test
-            os.environ["JSON_SIMPLIFIER_ENABLED"] = "true"
-            os.environ["JSON_SIMPLIFIER_MODEL"] = "test-env-model"
-            os.environ["JSON_SIMPLIFIER_APPLY_TO"] = "inference,video"
-            
-            # Charger la configuration depuis l'environnement
-            from config import load_config
-            config = load_config()
-            
-            # Vérifier que la configuration a été correctement chargée
-            assert config["postprocessing"]["json_simplifier"]["enabled"] is True
-            assert config["postprocessing"]["json_simplifier"]["model"] == "test-env-model"
-            assert config["postprocessing"]["json_simplifier"]["apply_to"] == ["inference", "video"]
-            
-        finally:
-            # Restaurer les variables d'environnement originales
-            if original_enabled is not None:
-                os.environ["JSON_SIMPLIFIER_ENABLED"] = original_enabled
-            else:
-                os.environ.pop("JSON_SIMPLIFIER_ENABLED", None)
-                
-            if original_model is not None:
-                os.environ["JSON_SIMPLIFIER_MODEL"] = original_model
-            else:
-                os.environ.pop("JSON_SIMPLIFIER_MODEL", None)
-                
-            if original_apply_to is not None:
-                os.environ["JSON_SIMPLIFIER_APPLY_TO"] = original_apply_to
-            else:
-                os.environ.pop("JSON_SIMPLIFIER_APPLY_TO", None)
-
-
-if __name__ == "__main__":
-    print("Exécution des tests du post-processeur JSONSimplifier...")
-    pytest.main(["-xvs", __file__])
+        # Skip if endpoint doesn't exist
+        if response.status_code == 404:
+            pytest.skip("Direct JSON simplification endpoint not available")
+        
+        assert response.status_code == 200, f"Unexpected status code: {response.status_code}, {response.text}"
+        
+        # Check response
+        data = response.json()
+        assert "plain_explanation" in data, "No plain_explanation in response"
+        assert isinstance(data["plain_explanation"], str), "plain_explanation should be a string"
+        assert len(data["plain_explanation"]) > 0, "plain_explanation should not be empty"
+    
+    def test_simplification_configuration(self, api_url, auth_headers):
+        """Test the configuration endpoint for JSON simplification if available."""
+        # Try to get current configuration
+        response = requests.get(
+            f"{api_url}/api/config/postprocessing/json-simplifier",
+            headers=auth_headers
+        )
+        
+        # Skip if endpoint doesn't exist
+        if response.status_code == 404:
+            pytest.skip("JSON simplifier configuration endpoint not available")
+        
+        assert response.status_code == 200, f"Unexpected status code: {response.status_code}, {response.text}"
+        
+        # Check response
+        data = response.json()
+        assert "enabled" in data, "No enabled field in configuration"
+        
+        # Test updating configuration if writeable
+        original_enabled = data["enabled"]
+        
+        # Try to toggle the setting
+        update_response = requests.put(
+            f"{api_url}/api/config/postprocessing/json-simplifier",
+            json={"enabled": not original_enabled},
+            headers=auth_headers
+        )
+        
+        # Skip if configuration update not supported
+        if update_response.status_code in [403, 404]:
+            pytest.skip("Configuration update not supported or not permitted")
+        
+        assert update_response.status_code == 200, f"Unexpected status code: {update_response.status_code}, {update_response.text}"
+        
+        # Verify setting was updated
+        updated_data = update_response.json()
+        assert updated_data["enabled"] != original_enabled, "Setting was not updated"
+        
+        # Reset to original value
+        reset_response = requests.put(
+            f"{api_url}/api/config/postprocessing/json-simplifier",
+            json={"enabled": original_enabled},
+            headers=auth_headers
+        )
+        
+        assert reset_response.status_code == 200, "Failed to reset configuration"

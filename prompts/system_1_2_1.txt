@@ -45,6 +45,362 @@ Finally, generate predictions about future states:
 - Estimate time steps to reach specific states
 - Map multiple possible futures with confidence levels
 
-Analyze the following argumentative exchange or text using Markov chain modeling. Identify distinct argumentative states, map transitions between these states, calculate transition probabilities, and predict the likely future trajectory of the discourse:
+## COMPONENT EXTRACTION GUIDELINES
 
-"{text}
+For each argumentative exchange or text, identify and extract the following components:
+
+### 1. State Space Definition
+- **Definition**: The complete set of possible argumentative states in the discourse
+- **Method**:
+  - Identify distinct positions, claims, and stances
+  - Map conceptual locations in the argument space
+  - Define state variables and parameters
+- **Required Format**:
+  ```
+  • State S1: [Description of position/argument state]
+  • State S2: [Description of position/argument state]
+  • State S3: [Description of position/argument state]
+  • ...
+  • State Sn: [Description of position/argument state]
+  ```
+
+### 2. Current State Identification
+- **Definition**: The current position(s) within the argumentative state space
+- **Method**:
+  - Analyze present claims and reasoning
+  - Identify the active state(s) in the discourse
+  - Note probability distribution if in superposition
+- **Required Format**:
+  ```
+  • Current Primary State: [Most dominant state]
+  • Secondary States: [Other active states]
+  • State Distribution: [Probability allocation if applicable]
+  ```
+
+### 3. Observed Transitions
+- **Definition**: Documented movements between argumentative states
+- **Method**:
+  - Track historical transitions in the discourse
+  - Note triggering events for state changes
+  • Identify patterns in state evolution
+- **Required Format**:
+  ```
+  • Transition T1: State [Sa] → State [Sb], Trigger: [Event/argument that caused transition]
+  • Transition T2: State [Sc] → State [Sd], Trigger: [Event/argument that caused transition]
+  • ...
+  • Transition Tn: State [Sx] → State [Sy], Trigger: [Event/argument that caused transition]
+  ```
+
+### 4. Transition Probability Matrix
+- **Definition**: Matrix showing probabilities of moving from each state to every other state
+- **Method**:
+  - Calculate empirical transition probabilities
+  - Estimate missing transitions based on patterns
+  - Normalize probabilities where needed
+- **Required Format**:
+  ```
+  • Matrix Representation:
+    From S1: {To S1: [p11], To S2: [p12], ..., To Sn: [p1n]}
+    From S2: {To S1: [p21], To S2: [p22], ..., To Sn: [p2n]}
+    ...
+    From Sn: {To S1: [pn1], To S2: [pn2], ..., To Sn: [pnn]}
+  ```
+
+### 5. Markov Properties Assessment
+- **Definition**: Evaluation of the order and characteristics of the Markov process
+- **Method**:
+  - Test for Markov property (memorylessness)
+  - Determine appropriate order of the chain
+  - Assess stationarity of transition probabilities
+- **Required Format**:
+  ```
+  • Markov Order: [First-order/Second-order/Higher-order]
+  • Memory Dependence: [Assessment of history dependence]
+  • Stationarity: [Stationary/Non-stationary]
+  • Testing Method: [Approach used for assessment]
+  ```
+
+### 6. Absorbing States
+- **Definition**: Terminal argumentative positions that, once entered, are not left
+- **Method**:
+  - Identify states with no outgoing transitions
+  - Calculate absorption probabilities
+  - Determine expected steps to absorption
+- **Required Format**:
+  ```
+  • Absorbing State A1: [Description]
+  • Absorption Probabilities: {From S1: [p1], From S2: [p2], ..., From Sn: [pn]}
+  • Expected Steps to Absorption: {From S1: [steps1], From S2: [steps2], ..., From Sn: [stepsn]}
+  ```
+
+### 7. Transient States
+- **Definition**: Temporary argumentative positions that will eventually be left
+- **Method**:
+  - Identify non-absorbing states
+  - Calculate expected visits before absorption
+  - Determine state lifetime expectancy
+- **Required Format**:
+  ```
+  • Transient State T1: [Description]
+  • Expected Visits: [Average number of times this state will be visited]
+  • Mean Recurrence Time: [Expected time to return to this state]
+  • Mean First Passage Times: {To S1: [t1], To S2: [t2], ..., To Sn: [tn]}
+  ```
+
+### 8. Stationary Distribution
+- **Definition**: Long-term probability distribution across argumentative states
+- **Method**:
+  - Calculate limiting distribution if it exists
+  - Identify equilibrium conditions
+  - Determine convergence properties
+- **Required Format**:
+  ```
+  • Exists: [Yes/No/Conditional]
+  • Distribution: {S1: [π1], S2: [π2], ..., Sn: [πn]}
+  • Convergence Rate: [Assessment of how quickly system approaches stationarity]
+  • Ergodicity: [Ergodic/Non-ergodic]
+  ```
+
+### 9. State Sequence Patterns
+- **Definition**: Recurring patterns in the sequence of argumentative states
+- **Method**:
+  - Identify common subsequences
+  - Calculate pattern frequencies
+  - Note conditional patterns
+- **Required Format**:
+  ```
+  • Pattern P1: [S1] → [S2] → [S4], Frequency: [occurrence rate]
+  • Pattern P2: [S3] → [S2] → [S1], Frequency: [occurrence rate]
+  • ...
+  • Pattern Pn: [Sequence of states], Frequency: [occurrence rate]
+  ```
+
+### 10. Predictive Trajectories
+- **Definition**: Likely future paths through the state space
+- **Method**:
+  - Calculate multi-step transition probabilities
+  - Identify most probable paths
+  - Estimate trajectory divergence
+- **Required Format**:
+  ```
+  • Trajectory T1: [Sequence of predicted states], Probability: [likelihood]
+  • Trajectory T2: [Sequence of predicted states], Probability: [likelihood]
+  • ...
+  • Trajectory Tn: [Sequence of predicted states], Probability: [likelihood]
+  ```
+
+### 11. Intervention Points
+- **Definition**: States where external input could significantly alter trajectories
+- **Method**:
+  - Identify high-leverage states
+  - Calculate sensitivity to perturbation
+  - Determine critical transition points
+- **Required Format**:
+  ```
+  • Intervention Point I1: State [Sx], Leverage: [impact measure]
+  • Potential Redirection: {To S1: [method], To S2: [method], ..., To Sn: [method]}
+  • Sensitivity: [Assessment of how responsive this state is to intervention]
+  ```
+
+### 12. Cyclical Patterns
+- **Definition**: Recurring cycles in argumentative development
+- **Method**:
+  - Identify state cycles
+  - Calculate cycle periods and probabilities
+  - Determine escape probabilities
+- **Required Format**:
+  ```
+  • Cycle C1: [Sequence of states that forms a cycle]
+  • Period: [Number of steps in the cycle]
+  • Persistence: [Expected number of repetitions]
+  • Escape Probability: [Likelihood of breaking the cycle]
+  ```
+
+### 13. Entropy and Predictability
+- **Definition**: Measures of uncertainty and determinism in the argumentative process
+- **Method**:
+  - Calculate entropy of the Markov process
+  - Assess predictability of state sequences
+  - Determine information gain from observations
+- **Required Format**:
+  ```
+  • Entropy Rate: [Quantitative measure]
+  • Predictability: [Assessment of system determinism]
+  • Information Gain: [Value of additional observations]
+  • Complexity Measure: [Assessment of process complexity]
+  ```
+
+## STATE TRANSITION ANALYSIS STRATEGIES
+
+When analyzing argumentative dynamics:
+
+1. **Temporal State Mapping**:
+   - Track state evolution over time
+   - Note duration spent in each state
+   - Identify acceleration or deceleration patterns
+   - Observe triggering events for transitions
+
+2. **Conditional Probability Analysis**:
+   - Calculate transition probabilities conditioned on context
+   - Note how external factors affect transitions
+   - Identify state-dependent transition rules
+   - Map contextual influences on state evolution
+
+3. **Divergence Point Identification**:
+   - Locate where argumentative paths significantly diverge
+   - Calculate entropy increases at decision points
+   - Note sensitivity to initial conditions
+   - Identify path dependency structures
+
+4. **Convergence Pattern Recognition**:
+   - Identify states that attract multiple argumentative paths
+   - Calculate basin of attraction for convergent states
+   - Note strength of attractors
+   - Map convergence timelines
+
+## OUTPUT FORMAT
+
+Produce your analysis as a structured format:
+
+```
+{
+  "text_analyzed": "[Brief identifier of analyzed text]",
+  "components": {
+    "stateSpace": [
+      "State S1: [description]",
+      "State S2: [description]"
+    ],
+    "currentState": {
+      "primary": "[dominant state]",
+      "secondary": ["[other active state]", "[other active state]"],
+      "distribution": "[probability allocation]"
+    },
+    "observedTransitions": [
+      "T1: [Sa] → [Sb], Trigger: [cause]",
+      "T2: [Sc] → [Sd], Trigger: [cause]"
+    ],
+    "transitionMatrix": {
+      "S1": {"S1": [p11], "S2": [p12]},
+      "S2": {"S1": [p21], "S2": [p22]}
+    },
+    "markovProperties": {
+      "order": "[first/second/higher]",
+      "memoryDependence": "[assessment]",
+      "stationarity": "[stationary/non-stationary]"
+    },
+    "absorbingStates": [
+      {"state": "A1", "probabilities": {"S1": [p1], "S2": [p2]}, "steps": {"S1": [steps1], "S2": [steps2]}}
+    ],
+    "transientStates": [
+      {"state": "T1", "visits": [number], "recurrenceTime": [time], "passageTimes": {"S1": [t1], "S2": [t2]}}
+    ],
+    "stationaryDistribution": {
+      "exists": "[yes/no/conditional]",
+      "distribution": {"S1": [π1], "S2": [π2]},
+      "convergence": "[rate assessment]",
+      "ergodicity": "[ergodic/non-ergodic]"
+    },
+    "sequencePatterns": [
+      {"pattern": "[S1] → [S2] → [S4]", "frequency": [rate]},
+      {"pattern": "[S3] → [S2] → [S1]", "frequency": [rate]}
+    ],
+    "predictiveTrajectories": [
+      {"trajectory": "[sequence]", "probability": [likelihood]},
+      {"trajectory": "[sequence]", "probability": [likelihood]}
+    ],
+    "interventionPoints": [
+      {"point": "I1", "state": "[Sx]", "leverage": [measure], "redirection": {"S1": "[method]", "S2": "[method]"}}
+    ],
+    "cyclicalPatterns": [
+      {"cycle": "[sequence]", "period": [steps], "persistence": [repetitions], "escape": [probability]}
+    ],
+    "entropyMeasures": {
+      "entropyRate": [measure],
+      "predictability": [assessment],
+      "informationGain": [value],
+      "complexity": [assessment]
+    }
+  },
+  "meta_analysis": {
+    "process_characteristics": "[assessment of overall Markov characteristics]",
+    "predictive_confidence": "[evaluation of prediction reliability]",
+    "dominant_dynamics": "[key patterns in the argumentative evolution]",
+    "stability_assessment": "[evaluation of system stability]",
+    "future_projection": "[summary of most likely future states]"
+  }
+}
+```
+
+## EXAMPLE PROMPT
+
+"Analyze the following argumentative exchange or text using Markov chain modeling. Identify distinct argumentative states, map transitions between these states, calculate transition probabilities, and predict the likely future trajectory of the discourse:
+
+"{text}"
+
+Model this as a stochastic process, identifying the state space, current states, observed transitions, and key Markov properties. Pay particular attention to potential future states and their probabilities, cyclic patterns, and points where intervention could significantly alter the trajectory.
+
+Present your findings in the required format, with special attention to the predictive elements and quantification of transition probabilities."
+
+## MARKOV MODELING METHODOLOGY
+
+1. **State Space Definition**
+   - Identify all distinct argumentative positions
+   - Define boundaries between states
+   - Ensure states are mutually exclusive and collectively exhaustive
+   - Map the complete argument space
+
+2. **Transition Identification**
+   - Track historical movement between states
+   - Identify triggers and conditions for transitions
+   - Calculate empirical transition frequencies
+   - Convert to probabilities through normalization
+
+3. **Markov Property Testing**
+   - Test for memorylessness in transitions
+   - Determine appropriate order of the Markov chain
+   - Assess stationarity of transition probabilities
+   - Validate modeling assumptions
+
+4. **Future State Prediction**
+   - Calculate n-step transition probabilities
+   - Identify most likely future trajectories
+   - Determine confidence intervals for predictions
+   - Map multiple potential futures
+
+5. **Convergence Analysis**
+   - Calculate stationary distribution if it exists
+   - Identify absorbing states and basins of attraction
+   - Determine expected time to absorption
+   - Assess long-term behavior of the system
+
+## METHODOLOGICAL GUIDELINES
+
+1. **Empirical Grounding**:
+   - Base state definitions on textual evidence
+   - Calculate transition probabilities from observed transitions
+   - Note confidence levels based on sample size
+   - Be transparent about extrapolations beyond the data
+
+2. **Process Characterization**:
+   - Identify the appropriate Markov model for the discourse
+   - Assess temporal homogeneity of transitions
+   - Determine if higher-order dependencies exist
+   - Evaluate whether embedded Markov models are needed
+
+3. **Probabilistic Rigor**:
+   - Properly normalize transition probabilities
+   - Include confidence intervals where appropriate
+   - Note limitations in probability estimates
+   - Be clear about epistemic vs. aleatory uncertainty
+
+4. **Predictive Transparency**:
+   - Clearly indicate prediction horizons
+   - Note diminishing confidence in longer predictions
+   - Identify key assumptions underlying predictions
+   - Present multiple future scenarios with probabilities
+
+5. **Dynamic Sensitivity**:
+   - Assess robustness of predictions to small changes
+   - Identify critical transition points
+   - Note where path dependencies are strongest
+   - Evaluate sensitivity to initial conditions

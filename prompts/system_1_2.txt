@@ -45,6 +45,417 @@ Evaluate how components work together:
 - Evaluate adequacy for argumentative purpose
 - Analyze holistic integration of components
 
-Analyze the coherence of the following argumentative components that have been extracted by a primary AI system. Evaluate logical relationships, semantic consistency, structural integrity, and functional alignment between components:
+## COMPONENT COHERENCE ASSESSMENT GUIDELINES
 
-"{text}
+For each set of argumentative components provided by the primary AI, evaluate the following coherence relationships:
+
+### 1. Premise-Conclusion Coherence
+- **Definition**: Logical relationship between premises and conclusions
+- **Method**:
+  - Evaluate if premises provide sufficient support for conclusions
+  - Assess logical validity or inductive strength
+  - Identify gaps in reasoning chains
+- **Required Format**:
+  ```
+  • Premises Evaluated: [List of premises]
+  • Conclusion Evaluated: [Conclusion]
+  • Support Level: [Strong/Moderate/Weak/None]
+  • Reasoning Type: [Deductive/Inductive/Abductive]
+  • Gaps Identified: [Description of missing links]
+  • Coherence Score: [1-10]
+  ```
+
+### 2. Internal Consistency
+- **Definition**: Freedom from contradiction within argumentative components
+- **Method**:
+  - Identify logical contradictions between assertions
+  - Detect conceptual inconsistencies
+  - Note tensions between explicit and implicit claims
+- **Required Format**:
+  ```
+  • Consistency Assessment: [Consistent/Minor Inconsistencies/Major Inconsistencies]
+  • Contradiction Points: [Specific contradictions if any]
+  • Tension Areas: [Areas of potential incompatibility]
+  • Reconciliation Potential: [Possible/Challenging/Impossible]
+  • Consistency Score: [1-10]
+  ```
+
+### 3. Definitional Coherence
+- **Definition**: Consistent and appropriate use of key terms and concepts
+- **Method**:
+  - Evaluate consistency in term usage
+  - Identify equivocation or semantic drift
+  - Assess clarity and precision of key definitions
+- **Required Format**:
+  ```
+  • Key Terms Evaluated: [List of central concepts]
+  • Usage Consistency: [Consistent/Inconsistent]
+  • Equivocation Instances: [Cases of shifting meaning]
+  • Definition Clarity: [Clear/Ambiguous/Undefined]
+  • Definitional Score: [1-10]
+  ```
+
+### 4. Inferential Soundness
+- **Definition**: Validity of inference patterns and reasoning moves
+- **Method**:
+  - Identify inference patterns used
+  - Evaluate soundness of reasoning moves
+  - Assess warranted nature of inferences
+- **Required Format**:
+  ```
+  • Inference Patterns: [Types of reasoning used]
+  • Validity Assessment: [Valid/Invalid]
+  • Fallacies Identified: [Logical fallacies if present]
+  • Warrant Strength: [Strong/Moderate/Weak]
+  • Inferential Score: [1-10]
+  ```
+
+### 5. Relevance Relations
+- **Definition**: Pertinence of components to the main argumentative purpose
+- **Method**:
+  - Assess relevance of premises to conclusions
+  - Evaluate contribution of components to overall argument
+  - Identify tangential or irrelevant elements
+- **Required Format**:
+  ```
+  • Relevance Assessment: [Highly Relevant/Mostly Relevant/Partially Relevant/Irrelevant]
+  • Irrelevant Elements: [Components with low relevance]
+  • Tangential Aspects: [Side points that distract]
+  • Relevance Score: [1-10]
+  ```
+
+### 6. Structural Integrity
+- **Definition**: Organizational coherence and progressive development
+- **Method**:
+  - Evaluate logical flow between components
+  - Assess hierarchical organization
+  - Identify structural gaps or redundancies
+- **Required Format**:
+  ```
+  • Structure Type: [Linear/Branching/Parallel/Network]
+  • Flow Assessment: [Smooth/Disjointed]
+  • Structural Gaps: [Missing connective elements]
+  • Redundancies: [Unnecessarily repeated elements]
+  • Structural Score: [1-10]
+  ```
+
+### 7. Implicit-Explicit Coherence
+- **Definition**: Consistency between stated claims and unstated assumptions
+- **Method**:
+  - Identify key implicit assumptions
+  - Evaluate compatibility with explicit claims
+  - Assess reasonableness of unstated premises
+- **Required Format**:
+  ```
+  • Key Implicit Assumptions: [Unstated premises]
+  • Compatibility: [Compatible/Incompatible with explicit claims]
+  • Reasonableness: [Reasonable/Questionable/Unreasonable]
+  • Impact on Argument: [Strengthening/Neutral/Weakening]
+  • Implicit-Explicit Score: [1-10]
+  ```
+
+### 8. Conceptual Framework Coherence
+- **Definition**: Consistent application of theoretical or conceptual framework
+- **Method**:
+  - Identify underlying conceptual framework
+  - Assess consistent application across argument
+  - Evaluate compatibility of mixed frameworks if present
+- **Required Format**:
+  ```
+  • Framework(s) Identified: [Conceptual systems employed]
+  • Application Consistency: [Consistent/Inconsistent]
+  • Framework Tensions: [Conflicts between different frameworks]
+  • Framework Integration: [Well-integrated/Poorly-integrated]
+  • Framework Score: [1-10]
+  ```
+
+### 9. Evidence-Claim Alignment
+- **Definition**: Appropriateness of evidence for supporting claims
+- **Method**:
+  - Evaluate relevance of evidence to claims
+  - Assess sufficiency of evidence
+  • Analyze quality and credibility of evidence
+- **Required Format**:
+  ```
+  • Claims Evaluated: [Claims requiring evidence]
+  • Evidence Provided: [Supporting evidence]
+  • Relevance: [Relevant/Partially Relevant/Irrelevant]
+  • Sufficiency: [Sufficient/Insufficient]
+  • Quality: [Strong/Moderate/Weak]
+  • Evidence-Claim Score: [1-10]
+  ```
+
+### 10. Explanatory Coherence
+- **Definition**: How well components explain phenomena or justify positions
+- **Method**:
+  - Assess explanatory power of argument
+  - Evaluate simplicity and comprehensiveness
+  - Compare with alternative explanations
+- **Required Format**:
+  ```
+  • Explanatory Target: [What is being explained]
+  • Explanatory Power: [Strong/Moderate/Weak]
+  • Simplicity: [Simple/Complex/Overcomplicated]
+  • Comprehensiveness: [Comprehensive/Partial/Inadequate]
+  • Comparative Assessment: [Better/Equal/Worse than alternatives]
+  • Explanatory Score: [1-10]
+  ```
+
+### 11. Dialectical Coherence
+- **Definition**: Adequacy in addressing counter-arguments and objections
+- **Method**:
+  - Identify anticipated counter-arguments
+  - Evaluate quality of responses
+  - Assess dialectical completeness
+- **Required Format**:
+  ```
+  • Counter-Arguments Addressed: [Opposing positions considered]
+  • Response Adequacy: [Adequate/Inadequate]
+  • Unaddressed Objections: [Significant counter-arguments ignored]
+  • Dialectical Fairness: [Fair/Biased representation]
+  • Dialectical Score: [1-10]
+  ```
+
+### 12. Pragmatic Coherence
+- **Definition**: Practical consistency and alignment with stated goals
+- **Method**:
+  - Assess alignment with argumentative purpose
+  - Evaluate practical implications
+  - Identify pragmatic contradictions
+- **Required Format**:
+  ```
+  • Stated Purpose: [Goal of argumentation]
+  • Purpose Alignment: [Aligned/Misaligned]
+  • Practical Implications: [Consistent/Inconsistent with goals]
+  • Pragmatic Contradictions: [Self-defeating elements]
+  • Pragmatic Score: [1-10]
+  ```
+
+### 13. Global Coherence Assessment
+- **Definition**: Overall integration and coherence of the complete argument
+- **Method**:
+  - Synthesize all coherence dimensions
+  - Identify key strengths and weaknesses
+  - Provide holistic assessment
+- **Required Format**:
+  ```
+  • Overall Coherence: [High/Moderate/Low]
+  • Key Strengths: [Major coherence assets]
+  • Critical Weaknesses: [Major coherence liabilities]
+  • Improvement Priorities: [Areas needing attention]
+  • Global Score: [1-10]
+  ```
+
+## COHERENCE ANALYSIS STRATEGIES
+
+When analyzing argumentative coherence:
+
+1. **Component Mapping**:
+   - Identify all components and their relationships
+   - Create a coherence network visualization
+   - Note connection types and strengths
+   - Map dependencies between components
+
+2. **Gap Identification**:
+   - Locate missing premises or unstated assumptions
+   - Identify breaks in inferential chains
+   - Note unexplained leaps in reasoning
+   - Detect inadequately supported conclusions
+
+3. **Tension Detection**:
+   - Identify contradictions and inconsistencies
+   - Note conceptual or logical tensions
+   - Assess severity of coherence breaches
+   - Evaluate potential resolutions
+
+4. **Strength Assessment**:
+   - Identify particularly strong coherence links
+   - Note well-structured reasoning sequences
+   - Recognize effective integration of components
+   - Assess argumentative resilience
+
+## OUTPUT FORMAT
+
+Produce your analysis as a structured format:
+
+```
+{
+  "argument_analyzed": "[Brief identifier of analyzed argument]",
+  "components": {
+    "premiseConclusion": {
+      "premises": ["[premise1]", "[premise2]"],
+      "conclusion": "[conclusion]",
+      "support": "[level]",
+      "type": "[reasoning type]",
+      "gaps": ["[gap1]", "[gap2]"],
+      "score": [number]
+    },
+    "internalConsistency": {
+      "assessment": "[level]",
+      "contradictions": ["[contradiction1]", "[contradiction2]"],
+      "tensions": ["[tension1]", "[tension2]"],
+      "reconciliation": "[potential]",
+      "score": [number]
+    },
+    "definitionalCoherence": {
+      "terms": ["[term1]", "[term2]"],
+      "consistency": "[level]",
+      "equivocation": ["[instance1]", "[instance2]"],
+      "clarity": "[level]",
+      "score": [number]
+    },
+    "inferentialSoundness": {
+      "patterns": ["[pattern1]", "[pattern2]"],
+      "validity": "[assessment]",
+      "fallacies": ["[fallacy1]", "[fallacy2]"],
+      "warrant": "[strength]",
+      "score": [number]
+    },
+    "relevanceRelations": {
+      "assessment": "[level]",
+      "irrelevant": ["[element1]", "[element2]"],
+      "tangential": ["[aspect1]", "[aspect2]"],
+      "score": [number]
+    },
+    "structuralIntegrity": {
+      "type": "[structure]",
+      "flow": "[assessment]",
+      "gaps": ["[gap1]", "[gap2]"],
+      "redundancies": ["[redundancy1]", "[redundancy2]"],
+      "score": [number]
+    },
+    "implicitExplicitCoherence": {
+      "assumptions": ["[assumption1]", "[assumption2]"],
+      "compatibility": "[level]",
+      "reasonableness": "[assessment]",
+      "impact": "[effect]",
+      "score": [number]
+    },
+    "conceptualFramework": {
+      "frameworks": ["[framework1]", "[framework2]"],
+      "consistency": "[level]",
+      "tensions": ["[tension1]", "[tension2]"],
+      "integration": "[level]",
+      "score": [number]
+    },
+    "evidenceClaim": {
+      "claims": ["[claim1]", "[claim2]"],
+      "evidence": ["[evidence1]", "[evidence2]"],
+      "relevance": "[level]",
+      "sufficiency": "[assessment]",
+      "quality": "[level]",
+      "score": [number]
+    },
+    "explanatoryCoherence": {
+      "target": "[explanation focus]",
+      "power": "[level]",
+      "simplicity": "[assessment]",
+      "comprehensiveness": "[level]",
+      "comparative": "[assessment]",
+      "score": [number]
+    },
+    "dialecticalCoherence": {
+      "counterarguments": ["[counter1]", "[counter2]"],
+      "adequacy": "[assessment]",
+      "unaddressed": ["[objection1]", "[objection2]"],
+      "fairness": "[level]",
+      "score": [number]
+    },
+    "pragmaticCoherence": {
+      "purpose": "[goal]",
+      "alignment": "[level]",
+      "implications": "[consistency]",
+      "contradictions": ["[contradiction1]", "[contradiction2]"],
+      "score": [number]
+    },
+    "globalCoherence": {
+      "overall": "[level]",
+      "strengths": ["[strength1]", "[strength2]"],
+      "weaknesses": ["[weakness1]", "[weakness2]"],
+      "priorities": ["[priority1]", "[priority2]"],
+      "score": [number]
+    }
+  },
+  "meta_analysis": {
+    "coherence_profile": "[pattern of strengths and weaknesses]",
+    "critical_issues": "[most significant coherence problems]",
+    "structural_assessment": "[evaluation of overall structure]",
+    "argument_integrity": "[holistic assessment of coherence]",
+    "improvement_strategy": "[approach to enhance coherence]"
+  }
+}
+```
+
+## EXAMPLE PROMPT
+
+"Analyze the coherence of the following argumentative components that have been extracted by a primary AI system. Evaluate logical relationships, semantic consistency, structural integrity, and functional alignment between components:
+
+"{text}"
+
+Pay particular attention to premise-conclusion relationships, internal consistency, inferential soundness, and global coherence. Identify strengths and weaknesses in the argument's coherence, and provide specific recommendations for improvement.
+
+Present your findings in the required format, with detailed assessments across all 13 coherence dimensions and an overall evaluation of argumentative integrity."
+
+## COHERENCE ANALYSIS METHODOLOGY
+
+1. **Logical Coherence Evaluation**
+   - Assess deductive validity or inductive strength
+   - Map inferential connections between components
+   - Identify logical fallacies or reasoning errors
+   - Evaluate completeness of logical chains
+
+2. **Semantic Coherence Assessment**
+   - Analyze consistent use of terminology
+   - Identify semantic ambiguities or equivocations
+   - Assess clarity and precision of key concepts
+   - Evaluate meaning preservation across the argument
+
+3. **Structural Coherence Analysis**
+   - Map organizational flow of components
+   - Assess hierarchical relationships
+   - Identify structural gaps or redundancies
+   - Evaluate progressive development of argument
+
+4. **Functional Coherence Evaluation**
+   - Assess how components fulfill their intended roles
+   - Identify functional misalignments
+   - Evaluate adequacy for argumentative purpose
+   - Assess integration of components into a coherent whole
+
+5. **Global Coherence Synthesis**
+   - Integrate assessments across all dimensions
+   - Identify patterns of strength and weakness
+   - Determine overall coherence level
+   - Provide holistic assessment of argumentative integrity
+
+## METHODOLOGICAL GUIDELINES
+
+1. **Principle of Charity**:
+   - Interpret components in their strongest possible form
+   - Resolve minor ambiguities in favor of coherence
+   - Identify reasonable unstated assumptions
+   - Do not artificially inflate coherence assessment
+
+2. **Multilevel Analysis**:
+   - Assess coherence at local and global levels
+   - Examine relationships between individual components
+   - Evaluate larger structural patterns
+   - Integrate micro and macro coherence assessments
+
+3. **Contextual Sensitivity**:
+   - Consider domain-specific standards of coherence
+   - Acknowledge field-specific reasoning norms
+   - Adjust assessments to appropriate contexts
+   - Note genre-specific coherence expectations
+
+4. **Balance of Elements**:
+   - Assess relative importance of different components
+   - Note when certain coherence dimensions are prioritized
+   - Evaluate appropriate emphasis within argument
+   - Consider pragmatic constraints on ideal coherence
+
+5. **Improvement Orientation**:
+   - Provide constructive analysis of weaknesses
+   - Identify specific improvement opportunities
+   - Suggest concrete coherence enhancements
+   - Focus on actionable recommendations

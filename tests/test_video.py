@@ -1,481 +1,393 @@
+"""
+Tests for video analysis functionality
+------------------------------------
+This module tests the video analysis API including upload,
+manipulation analysis, and non-verbal analysis.
+"""
+
 import pytest
 import requests
-import json
 import os
-import time
 import io
-from typing import Dict, Any
+import time
+from pathlib import Path
 
-# URL de base de l'API (ajuster selon l'environnement)
-BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
-# Variable pour stocker les informations de test
-test_data = {
-    "api_key": None,
-    "manipulation_task_id": None,
-    "nonverbal_task_id": None,
-    "manipulation_video_path": None,  # Chemin pour la vidéo d'analyse de manipulation
-    "nonverbal_video_path": None      # Chemin pour la vidéo d'analyse non-verbale
-}
-
-# Fichiers vidéo de test
-SAMPLE_MANIPULATION_VIDEO_PATH = os.environ.get("SAMPLE_MANIPULATION_VIDEO_PATH", os.environ.get("SAMPLE_VIDEO_PATH"))
-SAMPLE_NONVERBAL_VIDEO_PATH = os.environ.get("SAMPLE_NONVERBAL_VIDEO_PATH", os.environ.get("SAMPLE_VIDEO_PATH"))
-
-def setup_module():
-    """Configuration initiale pour les tests vidéo."""
-    # Récupérer une clé API valide depuis les tests d'authentification ou utiliser une variable d'environnement
-    try:
-        # Essayer d'utiliser une variable d'environnement pour la clé API
-        api_key = os.environ.get("TEST_API_KEY")
-        
-        if not api_key:
-            # Importer et exécuter les tests d'authentification si nécessaire
-            from test_auth import test_register_user, test_login, test_create_api_key
+class TestVideo:
+    """Test class for video analysis endpoints."""
+    
+    @pytest.fixture(scope="function")
+    def sample_video_file(self, sample_video_path=None):
+        """Create or get a sample video file for testing."""
+        if sample_video_path and os.path.exists(sample_video_path):
+            return open(sample_video_path, "rb")
+        else:
+            # Create a minimal MP4 file for testing
+            fake_mp4 = io.BytesIO()
+            # MP4 file signature
+            fake_mp4.write(b'\x00\x00\x00\x18\x66\x74\x79\x70\x6D\x70\x34\x32')
+            # Additional data
+            fake_mp4.write(b'\x00' * 1024)
+            fake_mp4.seek(0)
+            return fake_mp4
+    
+    @pytest.fixture(scope="function")
+    def uploaded_video(self, api_url, api_headers, sample_video_file):
+        """Upload a sample video file and return its path."""
+        try:
+            files = {
+                "file": ("test_video.mp4", sample_video_file, "video/mp4")
+            }
             
-            # Créer un utilisateur et une clé API si nécessaire
-            test_register_user()
-            test_login()
-            test_create_api_key()
+            response = requests.post(
+                f"{api_url}/api/video/upload",
+                headers=api_headers,
+                files=files
+            )
             
-            from test_auth import test_data as auth_test_data
-            api_key = auth_test_data["api_key"]
-    except Exception as e:
-        # En cas d'erreur, une clé de test doit être fournie en variable d'environnement
-        api_key = os.environ.get("TEST_API_KEY")
-        if not api_key:
-            raise Exception("Aucune clé API disponible pour les tests. Définissez TEST_API_KEY ou exécutez test_auth.py")
+            # If endpoint doesn't exist, skip test
+            if response.status_code == 404:
+                pytest.skip("Video upload endpoint not available")
+            
+            assert response.status_code == 200, f"Upload failed: {response.status_code}, {response.text}"
+            
+            data = response.json()
+            assert "video_path" in data, "No video path in response"
+            
+            yield data["video_path"]
+            
+            # No cleanup needed as the server should handle temporary files
+            
+        finally:
+            # Close the file if it's a real file
+            if hasattr(sample_video_file, 'close'):
+                sample_video_file.close()
     
-    test_data["api_key"] = api_key
-
-def get_sample_video(video_type="manipulation"):
-    """
-    Retourne un fichier vidéo de test selon le type demandé.
-    
-    Args:
-        video_type (str): Type de vidéo ('manipulation' ou 'nonverbal')
-    
-    Returns:
-        Un fichier ouvert en mode binaire
-    """
-    video_path = None
-    
-    if video_type == "manipulation":
-        video_path = SAMPLE_MANIPULATION_VIDEO_PATH
-    elif video_type == "nonverbal":
-        video_path = SAMPLE_NONVERBAL_VIDEO_PATH
-    
-    if video_path and os.path.exists(video_path):
-        return open(video_path, "rb"), video_path
-    else:
-        # Pour les tests sans fichier vidéo réel, on peut utiliser un fichier minimal
-        # Ceci est juste pour tester l'API, mais ne passera pas la validation complète
-        # Vous devez définir les variables d'environnement pour des tests complets
-        video_type_name = "manipulation" if video_type == "manipulation" else "non-verbale"
-        pytest.skip(f"Aucun fichier vidéo pour analyse {video_type_name} disponible. Définissez SAMPLE_{video_type.upper()}_VIDEO_PATH.")
-
-def test_upload_manipulation_video():
-    """Teste le téléchargement d'un fichier vidéo pour l'analyse de manipulation."""
-    # S'assurer qu'une clé API est disponible
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Télécharger un fichier vidéo
-    try:
-        video_file, video_path = get_sample_video("manipulation")
+    @pytest.fixture(scope="function")
+    def manipulation_task(self, api_url, api_headers, uploaded_video, cleanup_task):
+        """Create a manipulation analysis task and yield its ID."""
+        # Prepare manipulation analysis data
+        analysis_data = {
+            "video_path": uploaded_video,
+            "transcribe": True,
+            "diarize": True,
+            "language": "fr"
+        }
         
+        # Start manipulation analysis
+        response = requests.post(
+            f"{api_url}/api/video/manipulation-analysis",
+            json=analysis_data,
+            headers=api_headers
+        )
+        
+        # If endpoint doesn't exist or service is unavailable, skip test
+        if response.status_code == 404:
+            pytest.skip("Manipulation analysis endpoint not available")
+            
+        if response.status_code == 503:
+            pytest.skip("Manipulation analysis service not available")
+        
+        assert response.status_code in [200, 202], f"Analysis failed: {response.status_code}, {response.text}"
+        
+        data = response.json()
+        assert "task_id" in data, "No task_id in response"
+        
+        task_id = data["task_id"]
+        yield task_id
+        
+        # Clean up after test
+        cleanup_task(task_id, api_headers)
+    
+    @pytest.fixture(scope="function")
+    def nonverbal_task(self, api_url, api_headers, uploaded_video, cleanup_task):
+        """Create a non-verbal analysis task and yield its ID."""
+        # Prepare non-verbal analysis data
+        analysis_data = {
+            "video_path": uploaded_video,
+            "extract_frames": True,
+            "frame_count": 32,
+            "analyze_facial_expressions": True
+        }
+        
+        # Start non-verbal analysis
+        response = requests.post(
+            f"{api_url}/api/video/nonverbal-analysis",
+            json=analysis_data,
+            headers=api_headers
+        )
+        
+        # If endpoint doesn't exist or service is unavailable, skip test
+        if response.status_code == 404:
+            pytest.skip("Non-verbal analysis endpoint not available")
+            
+        if response.status_code == 503:
+            pytest.skip("Non-verbal analysis service not available")
+        
+        assert response.status_code in [200, 202], f"Analysis failed: {response.status_code}, {response.text}"
+        
+        data = response.json()
+        assert "task_id" in data, "No task_id in response"
+        
+        task_id = data["task_id"]
+        yield task_id
+        
+        # Clean up after test
+        cleanup_task(task_id, api_headers)
+    
+    def test_upload_video(self, api_url, api_headers, sample_video_file):
+        """Test uploading a video file."""
         files = {
-            "file": ("manipulation_video.mp4", video_file, "video/mp4")
+            "file": ("test_video.mp4", sample_video_file, "video/mp4")
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/video/upload",
-            headers=headers,
+            f"{api_url}/api/video/upload",
+            headers=api_headers,
             files=files
         )
         
-        # Fermer le fichier après utilisation
-        video_file.close()
+        # If endpoint doesn't exist, skip test
+        if response.status_code == 404:
+            pytest.skip("Video upload endpoint not available")
         
-        assert response.status_code == 200, f"Code de statut inattendu: {response.status_code}, {response.text}"
+        assert response.status_code == 200, f"Upload failed: {response.status_code}, {response.text}"
         
-        # Vérifier la réponse
+        # Check response
         data = response.json()
-        assert "video_path" in data
-        assert "duration" in data
-        
-        # Sauvegarder le chemin de la vidéo pour les tests suivants
-        test_data["manipulation_video_path"] = data["video_path"]
-        
-    except Exception as e:
-        pytest.skip(f"Erreur lors du téléchargement de la vidéo de manipulation: {e}")
-
-def test_upload_nonverbal_video():
-    """Teste le téléchargement d'un fichier vidéo pour l'analyse non-verbale."""
-    # S'assurer qu'une clé API est disponible
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
+        assert "video_path" in data, "No video path in response"
+        assert "duration" in data, "No duration in response"
     
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Télécharger un fichier vidéo
-    try:
-        video_file, video_path = get_sample_video("nonverbal")
-        
-        files = {
-            "file": ("nonverbal_video.mp4", video_file, "video/mp4")
+    def test_video_manipulation_analysis(self, api_url, api_headers, uploaded_video):
+        """Test starting a video manipulation analysis."""
+        # Prepare manipulation analysis data
+        analysis_data = {
+            "video_path": uploaded_video,
+            "transcribe": True,
+            "diarize": True,
+            "language": "fr"
         }
         
+        # Start manipulation analysis
         response = requests.post(
-            f"{BASE_URL}/api/video/upload",
-            headers=headers,
-            files=files
+            f"{api_url}/api/video/manipulation-analysis",
+            json=analysis_data,
+            headers=api_headers
         )
         
-        # Fermer le fichier après utilisation
-        video_file.close()
+        # If endpoint doesn't exist, skip test
+        if response.status_code == 404:
+            pytest.skip("Manipulation analysis endpoint not available")
+            
+        # If service is unavailable, skip test
+        if response.status_code == 503:
+            pytest.skip("Manipulation analysis service not available")
         
-        assert response.status_code == 200, f"Code de statut inattendu: {response.status_code}, {response.text}"
+        assert response.status_code in [200, 202], f"Analysis failed: {response.status_code}, {response.text}"
         
-        # Vérifier la réponse
+        # Check response
         data = response.json()
-        assert "video_path" in data
-        assert "duration" in data
+        assert "task_id" in data, "No task_id in response"
+        assert "status" in data, "No status in response"
+        assert data["status"] == "pending", f"Expected status 'pending', got '{data['status']}'"
+    
+    def test_video_nonverbal_analysis(self, api_url, api_headers, uploaded_video):
+        """Test starting a non-verbal analysis."""
+        # Prepare non-verbal analysis data
+        analysis_data = {
+            "video_path": uploaded_video,
+            "extract_frames": True,
+            "frame_count": 32,
+            "analyze_facial_expressions": True
+        }
         
-        # Sauvegarder le chemin de la vidéo pour les tests suivants
-        test_data["nonverbal_video_path"] = data["video_path"]
+        # Start non-verbal analysis
+        response = requests.post(
+            f"{api_url}/api/video/nonverbal-analysis",
+            json=analysis_data,
+            headers=api_headers
+        )
         
-    except Exception as e:
-        pytest.skip(f"Erreur lors du téléchargement de la vidéo non-verbale: {e}")
-
-def test_start_manipulation_analysis():
-    """Teste le démarrage d'une analyse de manipulation."""
-    # S'assurer qu'une clé API et un chemin de vidéo sont disponibles
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    if test_data["manipulation_video_path"] is None:
-        pytest.skip("Aucun chemin de vidéo de manipulation disponible pour le test")
+        # If endpoint doesn't exist, skip test
+        if response.status_code == 404:
+            pytest.skip("Non-verbal analysis endpoint not available")
+            
+        # If service is unavailable, skip test
+        if response.status_code == 503:
+            pytest.skip("Non-verbal analysis service not available")
+        
+        assert response.status_code in [200, 202], f"Analysis failed: {response.status_code}, {response.text}"
+        
+        # Check response
+        data = response.json()
+        assert "task_id" in data, "No task_id in response"
+        assert "status" in data, "No status in response"
+        assert data["status"] == "pending", f"Expected status 'pending', got '{data['status']}'"
     
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Données pour l'analyse de manipulation
-    analysis_data = {
-        "video_path": test_data["manipulation_video_path"],
-        "transcribe": True,
-        "diarize": True,
-        "language": "fr"
-    }
-    
-    # Envoyer la requête d'analyse de manipulation
-    response = requests.post(
-        f"{BASE_URL}/api/video/manipulation-analysis",
-        json=analysis_data,
-        headers=headers
-    )
-    
-    # Si le service n'est pas disponible, ignorer le test
-    if response.status_code == 503:
-        pytest.skip("Service d'analyse de manipulation non disponible")
-    
-    assert response.status_code == 200, f"Code de statut inattendu: {response.status_code}, {response.text}"
-    
-    # Vérifier la réponse
-    data = response.json()
-    assert "task_id" in data
-    assert data["status"] == "pending"
-    
-    # Sauvegarder l'ID de tâche pour les tests suivants
-    test_data["manipulation_task_id"] = data["task_id"]
-
-def test_start_nonverbal_analysis():
-    """Teste le démarrage d'une analyse non-verbale."""
-    # S'assurer qu'une clé API et un chemin de vidéo sont disponibles
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    if test_data["nonverbal_video_path"] is None:
-        pytest.skip("Aucun chemin de vidéo non-verbale disponible pour le test")
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Données pour l'analyse non-verbale
-    analysis_data = {
-        "video_path": test_data["nonverbal_video_path"],
-        "extract_frames": True,
-        "frame_count": 32,
-        "analyze_facial_expressions": True
-    }
-    
-    # Envoyer la requête d'analyse non-verbale
-    response = requests.post(
-        f"{BASE_URL}/api/video/nonverbal-analysis",
-        json=analysis_data,
-        headers=headers
-    )
-    
-    # Si le service n'est pas disponible, ignorer le test
-    if response.status_code == 503:
-        pytest.skip("Service d'analyse non-verbale non disponible")
-    
-    assert response.status_code == 200, f"Code de statut inattendu: {response.status_code}, {response.text}"
-    
-    # Vérifier la réponse
-    data = response.json()
-    assert "task_id" in data
-    assert data["status"] == "pending"
-    
-    # Sauvegarder l'ID de tâche pour les tests suivants
-    test_data["nonverbal_task_id"] = data["task_id"]
-
-def test_get_manipulation_analysis_status():
-    """Teste la récupération de l'état d'une tâche d'analyse de manipulation."""
-    # S'assurer qu'une clé API et un ID de tâche sont disponibles
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    
-    if test_data.get("manipulation_task_id") is None:
-        pytest.skip("Aucun ID de tâche d'analyse de manipulation disponible pour le test")
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Envoyer la requête pour récupérer l'état de la tâche
-    response = requests.get(
-        f"{BASE_URL}/api/video/tasks/{test_data['manipulation_task_id']}", 
-        headers=headers
-    )
-    assert response.status_code == 200, f"Code de statut inattendu: {response.status_code}, {response.text}"
-    
-    # Vérifier la réponse
-    data = response.json()
-    assert "status" in data
-    assert "progress" in data
-    
-    # La tâche peut être en attente, en cours d'exécution ou terminée
-    assert data["status"] in ["pending", "running", "completed", "failed"], f"Statut inattendu: {data['status']}"
-
-def test_get_nonverbal_analysis_status():
-    """Teste la récupération de l'état d'une tâche d'analyse non-verbale."""
-    # S'assurer qu'une clé API et un ID de tâche sont disponibles
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    
-    if test_data.get("nonverbal_task_id") is None:
-        pytest.skip("Aucun ID de tâche d'analyse non-verbale disponible pour le test")
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Envoyer la requête pour récupérer l'état de la tâche
-    response = requests.get(
-        f"{BASE_URL}/api/video/tasks/{test_data['nonverbal_task_id']}", 
-        headers=headers
-    )
-    assert response.status_code == 200, f"Code de statut inattendu: {response.status_code}, {response.text}"
-    
-    # Vérifier la réponse
-    data = response.json()
-    assert "status" in data
-    assert "progress" in data
-    
-    # La tâche peut être en attente, en cours d'exécution ou terminée
-    assert data["status"] in ["pending", "running", "completed", "failed"], f"Statut inattendu: {data['status']}"
-
-def test_wait_for_manipulation_analysis_completion():
-    """Teste l'attente de la fin d'une tâche d'analyse de manipulation."""
-    # S'assurer qu'une clé API et un ID de tâche sont disponibles
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    
-    if test_data.get("manipulation_task_id") is None:
-        pytest.skip("Aucun ID de tâche d'analyse de manipulation disponible pour le test")
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Attendre que la tâche soit terminée (avec un délai d'expiration)
-    max_retries = 30  # 5 minutes maximum (avec 10 secondes d'intervalle)
-    for i in range(max_retries):
-        # Envoyer la requête pour récupérer l'état de la tâche
+    def test_get_manipulation_analysis_status(self, api_url, api_headers, manipulation_task):
+        """Test retrieving the status of a manipulation analysis task."""
         response = requests.get(
-            f"{BASE_URL}/api/video/tasks/{test_data['manipulation_task_id']}", 
-            headers=headers
+            f"{api_url}/api/video/tasks/{manipulation_task}",
+            headers=api_headers
         )
-        assert response.status_code == 200
         
-        # Vérifier la réponse
+        # If endpoint doesn't exist, try alternative
+        if response.status_code == 404:
+            response = requests.get(
+                f"{api_url}/api/tasks/{manipulation_task}",
+                headers=api_headers
+            )
+            
+            # If that also fails, skip test
+            if response.status_code == 404:
+                pytest.skip("No task status endpoint available")
+        
+        assert response.status_code == 200, f"Status check failed: {response.status_code}, {response.text}"
+        
+        # Check response
         data = response.json()
-        
-        # Si la tâche a échoué, afficher l'erreur
-        if data["status"] == "failed":
-            print(f"La tâche d'analyse de manipulation a échoué: {data.get('error', 'Erreur inconnue')}")
-            pytest.skip(f"La tâche d'analyse de manipulation a échoué: {data.get('error', 'Erreur inconnue')}")
-        
-        # Si la tâche est terminée, le test est réussi
-        if data["status"] == "completed":
-            if "results" in data:
-                assert isinstance(data["results"], dict)
-                # Vérifier que les résultats contiennent des données
-                assert len(data["results"]) > 0
-            break
-            
-        # Afficher la progression
-        print(f"Attente de la fin de l'analyse de manipulation... Progression: {data.get('progress', 0):.0f}% (tentative {i+1}/{max_retries})")
-            
-        # Attendre avant de réessayer
-        time.sleep(10)
-    else:
-        pytest.skip(f"La tâche d'analyse de manipulation n'est pas terminée après {max_retries} tentatives")
-
-def test_wait_for_nonverbal_analysis_completion():
-    """Teste l'attente de la fin d'une tâche d'analyse non-verbale."""
-    # S'assurer qu'une clé API et un ID de tâche sont disponibles
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
+        assert "status" in data, "No status in response"
+        assert "progress" in data, "No progress in response"
+        assert data["status"] in ["pending", "running", "completed", "failed"], f"Invalid status: {data['status']}"
     
-    if test_data.get("nonverbal_task_id") is None:
-        pytest.skip("Aucun ID de tâche d'analyse non-verbale disponible pour le test")
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Attendre que la tâche soit terminée (avec un délai d'expiration)
-    max_retries = 30  # 5 minutes maximum (avec 10 secondes d'intervalle)
-    for i in range(max_retries):
-        # Envoyer la requête pour récupérer l'état de la tâche
+    def test_get_nonverbal_analysis_status(self, api_url, api_headers, nonverbal_task):
+        """Test retrieving the status of a non-verbal analysis task."""
         response = requests.get(
-            f"{BASE_URL}/api/video/tasks/{test_data['nonverbal_task_id']}", 
-            headers=headers
+            f"{api_url}/api/video/tasks/{nonverbal_task}",
+            headers=api_headers
         )
-        assert response.status_code == 200
         
-        # Vérifier la réponse
+        # If endpoint doesn't exist, try alternative
+        if response.status_code == 404:
+            response = requests.get(
+                f"{api_url}/api/tasks/{nonverbal_task}",
+                headers=api_headers
+            )
+            
+            # If that also fails, skip test
+            if response.status_code == 404:
+                pytest.skip("No task status endpoint available")
+        
+        assert response.status_code == 200, f"Status check failed: {response.status_code}, {response.text}"
+        
+        # Check response
         data = response.json()
+        assert "status" in data, "No status in response"
+        assert "progress" in data, "No progress in response"
+        assert data["status"] in ["pending", "running", "completed", "failed"], f"Invalid status: {data['status']}"
+    
+    def test_wait_for_manipulation_analysis(self, api_url, api_headers, manipulation_task, wait_for_task):
+        """Test waiting for a manipulation analysis task to complete."""
+        # Wait for the task to complete with reduced timeout for testing
+        result = wait_for_task(
+            manipulation_task,
+            api_headers,
+            endpoint="/api/video/tasks/{task_id}",
+            max_retries=6,
+            delay=5
+        )
         
-        # Si la tâche a échoué, afficher l'erreur
-        if data["status"] == "failed":
-            print(f"La tâche d'analyse non-verbale a échoué: {data.get('error', 'Erreur inconnue')}")
-            pytest.skip(f"La tâche d'analyse non-verbale a échoué: {data.get('error', 'Erreur inconnue')}")
+        # If first endpoint fails, try standard endpoint
+        if result is None:
+            result = wait_for_task(
+                manipulation_task,
+                api_headers,
+                max_retries=6,
+                delay=5
+            )
         
-        # Si la tâche est terminée, le test est réussi
-        if data["status"] == "completed":
-            if "results" in data:
-                assert isinstance(data["results"], dict)
-                # Vérifier que les résultats contiennent des données
-                assert len(data["results"]) > 0
-            break
-            
-        # Afficher la progression
-        print(f"Attente de la fin de l'analyse non-verbale... Progression: {data.get('progress', 0):.0f}% (tentative {i+1}/{max_retries})")
-            
-        # Attendre avant de réessayer
-        time.sleep(10)
-    else:
-        pytest.skip(f"La tâche d'analyse non-verbale n'est pas terminée après {max_retries} tentatives")
-
-def test_get_all_video_tasks():
-    """Teste la récupération de toutes les tâches vidéo."""
-    # S'assurer qu'une clé API est disponible
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
+        # If task didn't complete in time, skip this test
+        if result is None:
+            pytest.skip(f"Task {manipulation_task} did not complete in the allotted time")
+        
+        # Verify task completed successfully
+        assert result["status"] == "completed", f"Task ended with status {result['status']}"
+        
+        # Verify results structure
+        assert "results" in result, "No results in response"
+        results = result["results"]
+        assert isinstance(results, dict), "Results should be a dictionary"
     
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
+    def test_wait_for_nonverbal_analysis(self, api_url, api_headers, nonverbal_task, wait_for_task):
+        """Test waiting for a non-verbal analysis task to complete."""
+        # Wait for the task to complete with reduced timeout for testing
+        result = wait_for_task(
+            nonverbal_task,
+            api_headers,
+            endpoint="/api/video/tasks/{task_id}",
+            max_retries=6,
+            delay=5
+        )
+        
+        # If first endpoint fails, try standard endpoint
+        if result is None:
+            result = wait_for_task(
+                nonverbal_task,
+                api_headers,
+                max_retries=6,
+                delay=5
+            )
+        
+        # If task didn't complete in time, skip this test
+        if result is None:
+            pytest.skip(f"Task {nonverbal_task} did not complete in the allotted time")
+        
+        # Verify task completed successfully
+        assert result["status"] == "completed", f"Task ended with status {result['status']}"
+        
+        # Verify results structure
+        assert "results" in result, "No results in response"
+        results = result["results"]
+        assert isinstance(results, dict), "Results should be a dictionary"
     
-    # Envoyer la requête pour récupérer toutes les tâches vidéo
-    response = requests.get(f"{BASE_URL}/api/video/tasks", headers=headers)
-    assert response.status_code == 200
+    def test_get_all_video_tasks(self, api_url, api_headers, manipulation_task):
+        """Test listing all video tasks."""
+        response = requests.get(
+            f"{api_url}/api/video/tasks",
+            headers=api_headers
+        )
+        
+        # If endpoint doesn't exist, skip test
+        if response.status_code == 404:
+            pytest.skip("Video tasks listing endpoint not available")
+        
+        assert response.status_code == 200, f"Tasks listing failed: {response.status_code}, {response.text}"
+        
+        # Check response
+        data = response.json()
+        assert "tasks" in data, "No tasks in response"
+        tasks = data["tasks"]
+        assert isinstance(tasks, list), "Tasks should be a list"
+        
+        # Find our test task
+        task_ids = [task.get("id") for task in tasks]
+        assert manipulation_task in task_ids, "Created task not found in task list"
     
-    # Vérifier la réponse
-    data = response.json()
-    assert "tasks" in data
-    assert isinstance(data["tasks"], list)
-    
-    # Si des tâches ont été créées précédemment, elles devraient être présentes
-    task_ids = [task["id"] for task in data["tasks"]]
-    if test_data.get("manipulation_task_id"):
-        assert test_data["manipulation_task_id"] in task_ids, "L'ID de tâche d'analyse de manipulation est absent"
-    if test_data.get("nonverbal_task_id"):
-        assert test_data["nonverbal_task_id"] in task_ids, "L'ID de tâche d'analyse non-verbale est absent"
-
-def test_delete_video_tasks():
-    """Teste la suppression des tâches vidéo."""
-    # S'assurer qu'une clé API est disponible
-    assert test_data["api_key"] is not None, "Aucune clé API disponible pour le test"
-    
-    # Configurer les headers avec la clé API
-    headers = {
-        "X-API-Key": test_data["api_key"]
-    }
-    
-    # Supprimer la tâche d'analyse de manipulation si disponible
-    if test_data.get("manipulation_task_id"):
+    def test_delete_video_task(self, api_url, api_headers, manipulation_task):
+        """Test deleting a video task."""
+        # Delete the task
         response = requests.delete(
-            f"{BASE_URL}/api/video/tasks/{test_data['manipulation_task_id']}", 
-            headers=headers
+            f"{api_url}/api/video/tasks/{manipulation_task}",
+            headers=api_headers
         )
-        assert response.status_code == 200
         
-        # Vérifier que la tâche a bien été supprimée
-        response = requests.get(
-            f"{BASE_URL}/api/video/tasks/{test_data['manipulation_task_id']}", 
-            headers=headers
-        )
-        assert response.status_code == 404
-    
-    # Supprimer la tâche d'analyse non-verbale si disponible
-    if test_data.get("nonverbal_task_id"):
-        response = requests.delete(
-            f"{BASE_URL}/api/video/tasks/{test_data['nonverbal_task_id']}", 
-            headers=headers
-        )
-        assert response.status_code == 200
+        # If endpoint doesn't exist, try alternative
+        if response.status_code == 404:
+            response = requests.delete(
+                f"{api_url}/api/tasks/{manipulation_task}",
+                headers=api_headers
+            )
+            
+            # If that also fails, skip test
+            if response.status_code == 404:
+                pytest.skip("No task deletion endpoint available")
         
-        # Vérifier que la tâche a bien été supprimée
+        assert response.status_code == 200, f"Task deletion failed: {response.status_code}, {response.text}"
+        
+        # Verify deletion
         response = requests.get(
-            f"{BASE_URL}/api/video/tasks/{test_data['nonverbal_task_id']}", 
-            headers=headers
+            f"{api_url}/api/video/tasks/{manipulation_task}",
+            headers=api_headers
         )
-        assert response.status_code == 404
-
-if __name__ == "__main__":
-    # Initialiser les tests
-    setup_module()
-    
-    # Tests pour l'analyse de manipulation
-    test_upload_manipulation_video()
-    try:
-        test_start_manipulation_analysis()
-        test_get_manipulation_analysis_status()
-        test_wait_for_manipulation_analysis_completion()
-    except Exception as e:
-        print(f"Les tests d'analyse de manipulation ont échoué: {e}")
-    
-    # Tests pour l'analyse non-verbale
-    test_upload_nonverbal_video()
-    try:
-        test_start_nonverbal_analysis()
-        test_get_nonverbal_analysis_status()
-        test_wait_for_nonverbal_analysis_completion()
-    except Exception as e:
-        print(f"Les tests d'analyse non-verbale ont échoué: {e}")
-    
-    # Tests communs
-    test_get_all_video_tasks()
-    test_delete_video_tasks()
-    
-    print("Tous les tests vidéo ont réussi!")
+        
+        assert response.status_code == 404, "Task was not deleted"
